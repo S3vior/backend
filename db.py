@@ -12,7 +12,8 @@ def create_tables():
         """CREATE TABLE IF NOT EXISTS person(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-				message TEXT NOT NULL
+				message TEXT NOT NULL,
+                image Text
             )
             """
     ]

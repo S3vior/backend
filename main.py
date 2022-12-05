@@ -6,8 +6,21 @@ import person_controller
 import face_recognition
 from db import create_tables
 import json
+import cloudinary
+from cloudinary.uploader import upload
+from cloudinary.utils import cloudinary_url
 
 app = Flask(__name__)
+
+cloudinary.config(
+  cloud_name = "khaledelabady11",
+  api_key = "772589215762873",
+  api_secret = "6EtKMojSfmrBn3t2UMH2wrAODCA"
+)
+
+def uploader(file):
+    result = cloudinary.uploader.upload(file)
+    return result["secure_url"]
 
 # You can change this to any folder on your system
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -23,38 +36,67 @@ def allowed_file(filename):
 
 @app.route('/person', methods=['GET', 'POST'])
 def upload_image():
+
     # Check if a valid image file was uploaded
     if request.method == 'POST':
         name = request.form.get("name")
         message = request.form.get("message")
-        result = person_controller.insert_game(name, message)
+        file =request.files["file"]
+        image= uploader(file)
+        result = person_controller.insert_person(name, message,image)
         return jsonify(result)
 
 
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
+@app.route("/")
+def detect_faces_in_image():
+    person_1 = person_controller.get_by_id(1)
+    person_2 = person_controller.get_by_id(2)
 
-def detect_faces_in_image(file_stream):
+    one = face_recognition.load_image_file(person_1[3])
+    face_encoding_one = face_recognition.face_encodings(one)[0]
 
-    # mo_image = face_recognition.load_image_file("khaled.jpg")
-    # mo_face_encoding = face_recognition.face_encodings(mo_image)[0]
+    two= face_recognition.load_image_file(person_2[3])
+    face_encoding_two = face_recognition.face_encodings(two)[0]
 
-    # # shiba_image = face_recognition.load_image_file("shiba.jpg")
-    # # shiba_face_encoding = face_recognition.face_encodings(shiba_image)[0]
 
-    # known_face_encodings = [
-    # mo_face_encoding]
+    known_face_encodings = [face_encoding_one]
     # Load the uploaded image file
-    img = face_recognition.load_image_file(file_stream)
+    # img = face_recognition.load_image_file(file_stream)
 
     # Get face encodings for any faces in the uploaded image
-    unknown_face_encodings = face_recognition.face_encodings(img)
-    return unknown_face_encodings
+    # unknown_face_encodings = face_recognition.face_encodings(img)
+
+    face_found = False
+    is_khaled = False
+
+
+    match_results = face_recognition.compare_faces([face_encoding_one], face_encoding_two)
+    if match_results[0]:
+        is_khaled = True
+
+    # Return the result as json
+    result = {
+        "is_picture_of_khaled": is_khaled
+    }
+    return jsonify(result)
 
 @app.route('/api/persons', methods=["GET"])
 def get_games():
-    games = person_controller.get_games()
-    return jsonify(games)
+    persons = person_controller.get_persons()
+    person_list = []
+    for person in persons:
+        person_list.append(
+            {
+                "id": person[0],
+                "name": person[1],
+                "message": person[2],
+                "image": person[3],
+                # "created_on": person["created_on"],
+            }
+        )
+    return jsonify(person_list)
 
 # @app.route("/person", methods=["POST"])
 # def add_person():
@@ -67,9 +109,10 @@ def get_games():
 def insert_person():
     person_details = request.get_json()
     name = person_details["name"]
-    # image_encodings = detect_faces_in_image
+    file = person_details["image"]
+    image = uploader(file)
     message = person_details["message"]
-    result = person_controller.insert_game(name, message)
+    result = person_controller.insert_person(name, message,image)
     return jsonify(result)
 
 
@@ -92,7 +135,6 @@ def delete_person(id):
 def get_person_by_id(id):
     person = person_controller.get_by_id(id)
     return jsonify(person)
-
 
 if __name__ == "__main__":
     create_tables()

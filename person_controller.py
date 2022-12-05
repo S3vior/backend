@@ -1,11 +1,11 @@
 from db import get_db
 
 
-def insert_game(name,message):
+def insert_person(name,message,image):
     db = get_db()
     cursor = db.cursor()
-    statement = "INSERT INTO person(name, message) VALUES (?,?)"
-    cursor.execute(statement, [name, message])
+    statement = "INSERT INTO person(name, message ,image) VALUES (?,?,?)"
+    cursor.execute(statement, [name, message,image])
     db.commit()
     return True
 
@@ -36,9 +36,10 @@ def get_by_id(id):
     return cursor.fetchone()
 
 
-def get_games():
+def get_persons():
     db = get_db()
     cursor = db.cursor()
-    query = "SELECT id, name, message FROM person"
+    query = "SELECT id, name, message , image FROM person"
     cursor.execute(query)
-    return cursor.fetchall()
+    persons = cursor.fetchall()
+    return persons
