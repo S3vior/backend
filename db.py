@@ -1,5 +1,5 @@
 import sqlite3
-DATABASE_NAME = "games.db"
+DATABASE_NAME = "persons.db"
 
 
 def get_db():
@@ -9,11 +9,10 @@ def get_db():
 
 def create_tables():
     tables = [
-        """CREATE TABLE IF NOT EXISTS games(
+        """CREATE TABLE IF NOT EXISTS person(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-				price REAL NOT NULL,
-				rate INTEGER NOT NULL
+				message TEXT NOT NULL
             )
             """
     ]
