@@ -2,7 +2,7 @@
     API REST con Python 3 y SQLite 3
 """
 from flask import Flask, jsonify, request, redirect ,render_template
-import game_controller
+import person_controller
 import face_recognition
 from db import create_tables
 import json
@@ -27,7 +27,7 @@ def upload_image():
     if request.method == 'POST':
         name = request.form.get("name")
         message = request.form.get("message")
-        result = game_controller.insert_game(name, message)
+        result = person_controller.insert_game(name, message)
         return jsonify(result)
 
 
@@ -53,7 +53,7 @@ def detect_faces_in_image(file_stream):
 
 @app.route('/api/persons', methods=["GET"])
 def get_games():
-    games = game_controller.get_games()
+    games = person_controller.get_games()
     return jsonify(games)
 
 # @app.route("/person", methods=["POST"])
@@ -63,37 +63,35 @@ def get_games():
 #     result = game_controller.insert_game(name, message)
 #     return jsonify(result)
 
-@app.route("/api/person", methods=["POST"])
+@app.route("/api/persons", methods=["POST"])
 def insert_person():
-    game_details = request.get_json()
-    name = game_details["name"]
+    person_details = request.get_json()
+    name = person_details["name"]
     # image_encodings = detect_faces_in_image
-    message = game_details["message"]
-    result = game_controller.insert_game(name, message)
+    message = person_details["message"]
+    result = person_controller.insert_game(name, message)
     return jsonify(result)
 
 
-# @app.route("/person", methods=["PUT"])
-# def update_game():
-#     game_details = request.get_json()
-#     id = game_details["id"]
-#     name = game_details["name"]
-#     price = game_details["price"]
-#     rate = game_details["rate"]
-#     result = game_controller.update_game(id, name, price, rate)
-#     return jsonify(result)
+@app.route("/api/persons/<id>", methods=["PUT"])
+def update_person(id):
+    person_details = request.get_json()
+    name = person_details["name"]
+    message = person_details["message"]
+    result = person_controller.update_person(id,name, message)
+    return jsonify(result)
 
 
-# @app.route("/game/<id>", methods=["DELETE"])
-# def delete_game(id):
-#     result = game_controller.delete_game(id)
-#     return jsonify(result)
+@app.route("/api/persons/<id>", methods=["DELETE"])
+def delete_person(id):
+    result = person_controller.delete_person(id)
+    return jsonify(result)
 
 
-# @app.route("/game/<id>", methods=["GET"])
-# def get_game_by_id(id):
-#     game = game_controller.get_by_id(id)
-#     return jsonify(game)
+@app.route("/api/persons/<id>", methods=["GET"])
+def get_person_by_id(id):
+    person = person_controller.get_by_id(id)
+    return jsonify(person)
 
 
 if __name__ == "__main__":

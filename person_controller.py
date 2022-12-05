@@ -10,28 +10,28 @@ def insert_game(name,message):
     return True
 
 
-def update_game(id, name, image_encodings, message):
+def update_person(id ,name, message):
     db = get_db()
     cursor = db.cursor()
-    statement = "UPDATE person SET name = ?, image_encodings = ?, message = ? WHERE id = ?"
-    cursor.execute(statement, [name, image_encodings, message])
+    statement = "UPDATE person SET name = ?, message = ? WHERE id = ?"
+    cursor.execute(statement, [id, name, message])
     db.commit()
     return True
 
 
-# def delete_game(id):
-#     db = get_db()
-#     cursor = db.cursor()
-#     statement = "DELETE FROM games WHERE id = ?"
-#     cursor.execute(statement, [id])
-#     db.commit()
-#     return True
+def delete_person(id):
+    db = get_db()
+    cursor = db.cursor()
+    statement = "DELETE FROM person WHERE id = ?"
+    cursor.execute(statement, [id])
+    db.commit()
+    return True
 
 
 def get_by_id(id):
     db = get_db()
     cursor = db.cursor()
-    statement = "SELECT id, name, image_encodings, message FROM person WHERE id = ?"
+    statement = "SELECT id, name, message FROM person WHERE id = ?"
     cursor.execute(statement, [id])
     return cursor.fetchone()
 
