@@ -41,46 +41,21 @@ def upload_image():
     if request.method == 'POST':
         name = request.form.get("name")
         message = request.form.get("message")
+        age = request.form.get("age")
+        description = request.form.get("description")
         file =request.files["file"]
         image= uploader(file)
-        result = person_controller.insert_person(name, message,image)
+        # image_encoding =detect_faces_in_image(file)
+        result = person_controller.insert_person(name,age,message,description,image)
         return jsonify(result)
 
 
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
-@app.route("/")
-def detect_faces_in_image():
-    person_1 = person_controller.get_by_id(1)
-    person_2 = person_controller.get_by_id(2)
-
-    one = face_recognition.load_image_file(person_1[3])
-    face_encoding_one = face_recognition.face_encodings(one)[0]
-
-    two= face_recognition.load_image_file(person_2[3])
-    face_encoding_two = face_recognition.face_encodings(two)[0]
-
-
-    known_face_encodings = [face_encoding_one]
-    # Load the uploaded image file
-    # img = face_recognition.load_image_file(file_stream)
-
-    # Get face encodings for any faces in the uploaded image
-    # unknown_face_encodings = face_recognition.face_encodings(img)
-
-    face_found = False
-    is_khaled = False
-
-
-    match_results = face_recognition.compare_faces([face_encoding_one], face_encoding_two)
-    if match_results[0]:
-        is_khaled = True
-
-    # Return the result as json
-    result = {
-        "is_picture_of_khaled": is_khaled
-    }
-    return jsonify(result)
+def detect_faces_in_image(image_file):
+    img = face_recognition.load_image_file(image_file)
+    face_encodings = face_recognition.face_encodings(img)[0]
+    return face_encodings.tolist()
 
 @app.route('/api/persons', methods=["GET"])
 def get_games():
@@ -91,8 +66,11 @@ def get_games():
             {
                 "id": person[0],
                 "name": person[1],
-                "message": person[2],
-                "image": person[3],
+                "age": person[2],
+                "description": person[3],
+                "message": person[4],
+                "image": person[5]
+
                 # "created_on": person["created_on"],
             }
         )
@@ -110,9 +88,13 @@ def insert_person():
     person_details = request.get_json()
     name = person_details["name"]
     file = person_details["image"]
+    # image_encoding=detect_faces_in_image(file)
     image = uploader(file)
     message = person_details["message"]
-    result = person_controller.insert_person(name, message,image)
+    age = person_details["age"]
+    description = person_details["description"]
+
+    result = person_controller.insert_person(name,age,description, message,image)
     return jsonify(result)
 
 
