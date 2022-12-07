@@ -9,6 +9,8 @@ import json
 import cloudinary
 from cloudinary.uploader import upload
 from cloudinary.utils import cloudinary_url
+from PIL import Image
+import urllib.request
 
 app = Flask(__name__)
 
@@ -44,18 +46,21 @@ def upload_image():
         age = request.form.get("age")
         description = request.form.get("description")
         file =request.files["file"]
+        # face_encodings=detect_faces_in_image(file)
         image= uploader(file)
-        # image_encoding =detect_faces_in_image(file)
         result = person_controller.insert_person(name,age,message,description,image)
         return jsonify(result)
 
 
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
-def detect_faces_in_image(image_file):
-    img = face_recognition.load_image_file(image_file)
-    face_encodings = face_recognition.face_encodings(img)[0]
-    return face_encodings.tolist()
+@app.route("/")
+def detect_faces_in_image():
+    person = person_controller.get_by_id(8)
+    response = urllib.request.urlopen(person[5])
+    image = face_recognition.load_image_file(response)
+    face_encodings = face_recognition.face_encodings(image)[0]
+    return json.dumps(face_encodings.tolist())
 
 @app.route('/api/persons', methods=["GET"])
 def get_games():
@@ -116,7 +121,17 @@ def delete_person(id):
 @app.route("/api/persons/<id>", methods=["GET"])
 def get_person_by_id(id):
     person = person_controller.get_by_id(id)
-    return jsonify(person)
+    json_str= {
+                "id": person[0],
+                "name": person[1],
+                "age": person[2],
+                "description": person[3],
+                "message": person[4],
+                "image": person[5]
+
+                # "created_on": person["created_on"],
+            }
+    return jsonify(json_str)
 
 if __name__ == "__main__":
     create_tables()
