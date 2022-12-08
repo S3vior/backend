@@ -43,3 +43,20 @@ def get_persons():
     cursor.execute(query)
     persons = cursor.fetchall()
     return persons
+
+
+def insert_face(person_id,data):
+    db = get_db()
+    cursor = db.cursor()
+    statement = "INSERT INTO faces(person_id,data) VALUES (?,?)"
+    cursor.execute(statement, [person_id,data])
+    db.commit()
+    return True
+
+def get_faces():
+    db = get_db()
+    cursor = db.cursor()
+    query = "SELECT person_id, data FROM faces"
+    cursor.execute(query)
+    faces = cursor.fetchall()
+    return faces

@@ -56,11 +56,13 @@ def upload_image():
     return render_template("form.html")
 @app.route("/")
 def detect_faces_in_image():
-    person = person_controller.get_by_id(8)
+    person = person_controller.get_by_id(1)
     response = urllib.request.urlopen(person[5])
     image = face_recognition.load_image_file(response)
     face_encodings = face_recognition.face_encodings(image)[0]
-    return json.dumps(face_encodings.tolist())
+    json_data= json.dumps(face_encodings.tolist())
+    result = person_controller.insert_face(1,json_data)
+    return jsonify(result)
 
 @app.route('/api/persons', methods=["GET"])
 def get_games():
@@ -132,6 +134,22 @@ def get_person_by_id(id):
                 # "created_on": person["created_on"],
             }
     return jsonify(json_str)
+
+
+#get Face_encodings
+@app.route('/api/faces', methods=["GET"])
+def get_faces():
+    faces = person_controller.get_faces()
+    face_list = []
+    for face in faces:
+        face_list.append(
+            {
+                "person_id": face[0],
+                "data": face[1],
+                # "created_on": person["created_on"],
+            }
+        )
+    return jsonify(face_list)
 
 if __name__ == "__main__":
     create_tables()

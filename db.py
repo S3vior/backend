@@ -17,7 +17,9 @@ def create_tables():
                  image Text,
 				message TEXT
             )
+            """,
             """
+                 CREATE TABLE IF NOT EXISTS faces (person_id INTEGER, data json )"""
     ]
     db = get_db()
     cursor = db.cursor()
