@@ -3,6 +3,7 @@
 """
 from flask import Flask, jsonify, request, redirect ,render_template
 import person_controller
+import faces_controller
 import face_recognition
 from db import create_tables
 import json
@@ -11,6 +12,8 @@ from cloudinary.uploader import upload
 from cloudinary.utils import cloudinary_url
 from PIL import Image
 import urllib.request
+import ast
+import numpy as np
 
 app = Flask(__name__)
 
@@ -35,6 +38,16 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def detect_faces_in_image(person_id):
+    person = person_controller.get_by_id(person_id)
+    response = urllib.request.urlopen(person[5])
+    image = face_recognition.load_image_file(response)
+    face_encodings = face_recognition.face_encodings(image)[0]
+    json_data= json.dumps(face_encodings.tolist())
+    result = faces_controller.insert_face(person_id,json_data)
+    return jsonify(result)
+
+
 
 @app.route('/person', methods=['GET', 'POST'])
 def upload_image():
@@ -46,7 +59,6 @@ def upload_image():
         age = request.form.get("age")
         description = request.form.get("description")
         file =request.files["file"]
-        # face_encodings=detect_faces_in_image(file)
         image= uploader(file)
         result = person_controller.insert_person(name,age,message,description,image)
         return jsonify(result)
@@ -54,21 +66,14 @@ def upload_image():
 
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
-@app.route("/")
-def detect_faces_in_image():
-    person = person_controller.get_by_id(1)
-    response = urllib.request.urlopen(person[5])
-    image = face_recognition.load_image_file(response)
-    face_encodings = face_recognition.face_encodings(image)[0]
-    json_data= json.dumps(face_encodings.tolist())
-    result = person_controller.insert_face(1,json_data)
-    return jsonify(result)
+
 
 @app.route('/api/persons', methods=["GET"])
-def get_games():
+def get_persons():
     persons = person_controller.get_persons()
     person_list = []
     for person in persons:
+        detect_faces_in_image(person[0])
         person_list.append(
             {
                 "id": person[0],
@@ -77,30 +82,21 @@ def get_games():
                 "description": person[3],
                 "message": person[4],
                 "image": person[5]
-
-                # "created_on": person["created_on"],
             }
         )
     return jsonify(person_list)
 
-# @app.route("/person", methods=["POST"])
-# def add_person():
-#     name = request.files['name']
-#     message = request.files['message']
-#     result = game_controller.insert_game(name, message)
-#     return jsonify(result)
+
 
 @app.route("/api/persons", methods=["POST"])
 def insert_person():
     person_details = request.get_json()
     name = person_details["name"]
     file = person_details["image"]
-    # image_encoding=detect_faces_in_image(file)
     image = uploader(file)
     message = person_details["message"]
     age = person_details["age"]
     description = person_details["description"]
-
     result = person_controller.insert_person(name,age,description, message,image)
     return jsonify(result)
 
@@ -130,8 +126,6 @@ def get_person_by_id(id):
                 "description": person[3],
                 "message": person[4],
                 "image": person[5]
-
-                # "created_on": person["created_on"],
             }
     return jsonify(json_str)
 
@@ -139,7 +133,7 @@ def get_person_by_id(id):
 #get Face_encodings
 @app.route('/api/faces', methods=["GET"])
 def get_faces():
-    faces = person_controller.get_faces()
+    faces = faces_controller.get_faces()
     face_list = []
     for face in faces:
         face_list.append(
@@ -150,6 +144,23 @@ def get_faces():
             }
         )
     return jsonify(face_list)
+
+@app.route("/similar")
+def find_similar():
+    faces = faces_controller.get_faces()
+    face_needed= faces_controller.get_by_id(5)
+    face_one = np.array(face_needed[0])
+    for face in faces:
+        face_two = np.array(face[0])
+        if(face_one)==0:
+           match_results = face_recognition.compare_faces(face_one, face_two)
+           if match_results[0]:
+             return jsonify("exited")
+
+    return jsonify(json.dumps("not exited"))
+    # res =json.dumps(face_one.tolist())
+    # return jsonify()
+
 
 if __name__ == "__main__":
     create_tables()
