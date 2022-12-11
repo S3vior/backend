@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+    <style>
+    table {
+
+        font-family: arial, sans-serif;
+
+        border-collapse: collapse;
+
+        width: 100%;
+
+      }
+
+
+      td, th {
+
+        border: 1px solid #dddddd;
+
+        text-align: left;
+
+        padding: 8px;
+
+      }
+
+
+      tr:nth-child(even) {
+
+        background-color: #dddddd;
+
+      }
+
+      </style>
+      <table>
+        <tr>
+            <th>ID</td>
+            <th>Name</td>
+            <th>Age</td>
+            <th>Description</td>
+            <th>Message</td>
+            <th>Image</td>
+
+        </tr>
+        </thead>
+        <tbody>
+        {% for person in data %}
+                <tr>
+                    <th>{{ person[0] }}</td>
+                    <th>{{ person[1] }}</td>
+                    <th>{{ person[2] }}</td>
+                    <th>{{ person[3] }}</td>
+                    <th>{{ person[4] }}</td>
+                    <th>{{ person[5] }}</td>
+
+                </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+</html>
+

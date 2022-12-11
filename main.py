@@ -73,7 +73,7 @@ def get_persons():
     persons = person_controller.get_persons()
     person_list = []
     for person in persons:
-        detect_faces_in_image(person[0])
+        # detect_faces_in_image(person[0])
         person_list.append(
             {
                 "id": person[0],
@@ -86,6 +86,12 @@ def get_persons():
         )
     return jsonify(person_list)
 
+
+@app.route('/persons', methods=["GET"])
+def list_persons():
+    persons = person_controller.get_persons()
+
+    return render_template("index.html",data = persons)
 
 
 @app.route("/api/persons", methods=["POST"])
@@ -147,19 +153,27 @@ def get_faces():
 
 @app.route("/similar")
 def find_similar():
-    faces = faces_controller.get_faces()
-    face_needed= faces_controller.get_by_id(5)
-    face_one = np.array(face_needed[0])
-    for face in faces:
-        face_two = np.array(face[0])
-        if(face_one)==0:
-           match_results = face_recognition.compare_faces(face_one, face_two)
-           if match_results[0]:
-             return jsonify("exited")
+    persons = person_controller.get_persons()
+    person= person_controller.get_by_id(10)
+    response = urllib.request.urlopen(person[5])
+    image = face_recognition.load_image_file(response)
+    p1= face_recognition.face_encodings(image)
+    for x in persons:
+        if x[0]==10:
+            continue
+        response2 = urllib.request.urlopen(x[5])
+        image2 = face_recognition.load_image_file(response2)
+        p2 =face_recognition.face_encodings(image2)
+        if len(p1) > 0:
+
+             match_results = face_recognition.compare_faces([p1[0]], p2[0])
+             if match_results[0] == True:
+               str = "May be the person with id = {}"
+               return jsonify(str.format(x[0]))
+
+
 
     return jsonify(json.dumps("not exited"))
-    # res =json.dumps(face_one.tolist())
-    # return jsonify()
 
 
 if __name__ == "__main__":

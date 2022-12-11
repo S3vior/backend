@@ -1,12 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Add Person Details</title>
-</head>
+<html>
+<style>
+input[type=text], select {
+  width: 100%;
+  padding: 12px 20px;
+  margin: 8px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+input[type=submit] {
+  width: 100%;
+  background-color: #4CAF50;
+  color: white;
+  padding: 14px 20px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+input[type=submit]:hover {
+  background-color: #45a049;
+}
+
+div {
+  border-radius: 5px;
+  background-color: #f2f2f2;
+  padding: 20px;
+}
+</style>
 <body>
-<h1>Add New PersonL</h1>
-<form method="POST" enctype="multipart/form-data">
+<h1>Add Person</h1>
+<!-- <form method="POST" enctype="multipart/form-data">
   <input type="file" name="file">
   <input type="text" name="name">
   <input type="text" name="message">
@@ -14,6 +42,29 @@
   <input type="text" name="description">
 
   <input type="submit" value="Upload">
+</form> -->
+<form action="" method="POST" enctype="multipart/form-data">
+  <div class="form-example">
+    <label for="name">Enter your name: </label>
+    <input type="text" name="name" id="name" required>
+  </div>
+  <div class="form-example">
+    <label for="age">Enter your Age: </label>
+    <input type="INT" name="age" id="age" required>
+  </div>
+  <div class="form-example">
+    <label for="message">Enter your message: </label>
+    <input type="text" name="message" id="message" required>
+  </div>
+  <div class="form-example">
+    <label for="description">Enter your description: </label>
+    <input type="text" name="description" id="description" required>
+  </div>
+  <div class="form-example">
+    <label for="Image">Add Image: </label>
+    <input type="file" name="file" id="file" required>
+  </div>
+    <input type="submit" value="Upload">
 </form>
 
 </body>
