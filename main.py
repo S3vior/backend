@@ -151,15 +151,15 @@ def get_faces():
         )
     return jsonify(face_list)
 
-@app.route("/similar")
-def find_similar():
+@app.route("/api/persons/<id>/similar")
+def find_similar(id):
     persons = person_controller.get_persons()
-    person= person_controller.get_by_id(10)
+    person= person_controller.get_by_id(id)
     response = urllib.request.urlopen(person[5])
     image = face_recognition.load_image_file(response)
     p1= face_recognition.face_encodings(image)
     for x in persons:
-        if x[0]==10:
+        if x == person:
             continue
         response2 = urllib.request.urlopen(x[5])
         image2 = face_recognition.load_image_file(response2)
@@ -183,3 +183,4 @@ if __name__ == "__main__":
     Remember that, in order to make this API functional, you must set debug in False
     """
     app.run(host='0.0.0.0', port=8000, debug=False)
+    
