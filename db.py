@@ -18,8 +18,16 @@ def create_tables():
 				message TEXT
             )
             """,
-            """
-                 CREATE TABLE IF NOT EXISTS faces (person_id INTEGER, data json )"""
+            # """
+            #      CREATE TABLE IF NOT EXISTS faces (person_id INTEGER, data json )""",
+
+            #       """CREATE TABLE IF NOT EXISTS users(
+            #     id INTEGER PRIMARY KEY AUTOINCREMENT,
+            #     username varchar(50) NOT NULL,
+            #     password varchar(255) NOT NULL,
+            #     email varchar(100) NOT NULL
+            # )
+            # """
     ]
     db = get_db()
     cursor = db.cursor()
