@@ -13,6 +13,8 @@ from cloudinary.utils import cloudinary_url
 from PIL import Image
 import urllib.request
 import ast
+
+
 import numpy as np
 
 app = Flask(__name__)
@@ -183,4 +185,3 @@ if __name__ == "__main__":
     Remember that, in order to make this API functional, you must set debug in False
     """
     app.run(host='0.0.0.0', port=8000, debug=False)
-    
