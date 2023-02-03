@@ -36,6 +36,14 @@ def get_by_email(email):
     return cursor.fetchone()
 
 
+def get_by_id(id):
+    db = get_db()
+    cursor = db.cursor()
+    statement = "SELECT id, name,email,password FROM users WHERE id = ?"
+    cursor.execute(statement, [id])
+    return cursor.fetchone()
+
+
 def get_users():
     db = get_db()
     cursor = db.cursor()

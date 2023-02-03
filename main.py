@@ -15,17 +15,15 @@ import urllib.request
 import ast
 import numpy as np
 
-# from flask_login import login_required
-# from flask_login import current_user, login_user
-# from flask_login import logout_user
-# from models import UserModel,db,login
+from flask_login import current_user, login_user ,LoginManager ,logout_user ,login_required
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 app = Flask(__name__)
 
 
 
-
+login = LoginManager()
 
 # @app.before_first_request
 # def create_all():
@@ -63,6 +61,14 @@ def detect_faces_in_image(person_id):
     return jsonify(result)
 
 
+# def set_password(self,password):
+#         self.password_hash = generate_password_hash(password)
+# def check_password(self,password):
+#      return check_password_hash(self.password_hash,password)
+
+@login.user_loader
+def load_user(id):
+    return user_controller.get_by_id(id)
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -209,12 +215,13 @@ def find_similar(id):
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
     if current_user.is_authenticated:
-        return redirect('/blogs')
+        return redirect('/persons')
 
     if request.method == 'POST':
         email = request.form['email']
-        user = UserModel.query.filter_by(email = email).first()
-        if user is not None and user.check_password(request.form['password']):
+        password= request.form['password']
+        user = user_controller.get_by_email(email)
+        if user is not None :
             login_user(user)
             return redirect('/persons')
 
@@ -222,8 +229,8 @@ def login():
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
-    # if current_user.is_authenticated:
-    #     return redirect('/persons')
+    if current_user.is_authenticated:
+        return redirect('/persons')
 
     if request.method == 'POST':
         email = request.form['email']
