@@ -1,6 +1,0 @@
--- CREATE TABLE IF NOT EXISTS person(
---   id INTEGER PRIMARY KEY AUTOINCREMENT,
---   name TEXT NOT NULL,
---   age INTEGER NOT NULL
---   -- image INTEGER NOT NULL
--- )

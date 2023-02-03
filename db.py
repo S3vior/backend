@@ -9,16 +9,24 @@ def get_db():
 
 def create_tables():
     tables = [
-        """CREATE TABLE IF NOT EXISTS person(
+        """CREATE TABLE IF NOT EXISTS persons(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 age INTEGER,
                 description TEXT,
-                 image Text,
+                image Text,
 				message TEXT
             )
             """,
-            # """
+            """CREATE TABLE IF NOT EXISTS users(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email EMAIL TEXT NOT NULL,
+                password TEXT NOT NULL ,
+            CONSTRAINT email_unique UNIQUE (email)
+            )
+             """,
+            # # """
             #      CREATE TABLE IF NOT EXISTS faces (person_id INTEGER, data json )""",
 
             #       """CREATE TABLE IF NOT EXISTS users(

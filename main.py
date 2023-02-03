@@ -3,7 +3,7 @@
 """
 from flask import Flask, jsonify, request, redirect ,render_template
 import person_controller
-import faces_controller
+import user_controller
 import face_recognition
 from db import create_tables
 import json
@@ -13,11 +13,24 @@ from cloudinary.utils import cloudinary_url
 from PIL import Image
 import urllib.request
 import ast
-
-
 import numpy as np
 
+# from flask_login import login_required
+# from flask_login import current_user, login_user
+# from flask_login import logout_user
+# from models import UserModel,db,login
+
+
 app = Flask(__name__)
+
+
+
+
+
+# @app.before_first_request
+# def create_all():
+#    db.create_all()
+
 
 cloudinary.config(
   cloud_name = "khaledelabady11",
@@ -51,6 +64,13 @@ def detect_faces_in_image(person_id):
 
 
 
+
+# --------------------------------------------------------------------------------------------------------------
+# ENDPOINTS
+# --------------------------------------------------------------------------------------------------------------
+
+
+
 @app.route('/person', methods=['GET', 'POST'])
 def upload_image():
 
@@ -68,6 +88,20 @@ def upload_image():
 
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
+
+@app.route('/persons', methods=["GET"])
+def list_persons():
+    persons = person_controller.get_persons()
+
+    return render_template("index.html",data = persons)
+
+
+
+
+# --------------------------------------------------------------------------------------------------------------
+# API-ENDPOINTS
+# --------------------------------------------------------------------------------------------------------------
+
 
 
 @app.route('/api/persons', methods=["GET"])
@@ -88,12 +122,6 @@ def get_persons():
         )
     return jsonify(person_list)
 
-
-@app.route('/persons', methods=["GET"])
-def list_persons():
-    persons = person_controller.get_persons()
-
-    return render_template("index.html",data = persons)
 
 
 @app.route("/api/persons", methods=["POST"])
@@ -122,6 +150,7 @@ def update_person(id):
 def delete_person(id):
     result = person_controller.delete_person(id)
     return jsonify(result)
+
 
 
 @app.route("/api/persons/<id>", methods=["GET"])
@@ -177,6 +206,42 @@ def find_similar(id):
 
     return jsonify(json.dumps("not exited"))
 
+@app.route('/login', methods = ['POST', 'GET'])
+def login():
+    if current_user.is_authenticated:
+        return redirect('/blogs')
+
+    if request.method == 'POST':
+        email = request.form['email']
+        user = UserModel.query.filter_by(email = email).first()
+        if user is not None and user.check_password(request.form['password']):
+            login_user(user)
+            return redirect('/persons')
+
+    return render_template('login.html')
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    # if current_user.is_authenticated:
+    #     return redirect('/persons')
+
+    if request.method == 'POST':
+        email = request.form['email']
+        name = request.form['username']
+        password = request.form['password']
+
+        if user_controller.get_by_email(email):
+            return ('Email already Present')
+
+        user = user_controller.insert_user(name,email,password)
+        return jsonify(user)
+    return render_template('register.html')
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect('/blogs')
 
 if __name__ == "__main__":
     create_tables()
@@ -185,4 +250,3 @@ if __name__ == "__main__":
     Remember that, in order to make this API functional, you must set debug in False
     """
     app.run(host='0.0.0.0', port=8000, debug=False)
-    
