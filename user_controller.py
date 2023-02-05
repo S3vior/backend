@@ -47,7 +47,7 @@ def get_by_id(id):
 def get_users():
     db = get_db()
     cursor = db.cursor()
-    query = "SELECT id, name,phone_number,email FROM users"
+    query = "SELECT id, name,email FROM users"
     cursor.execute(query)
     users = cursor.fetchall()
     return users

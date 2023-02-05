@@ -214,8 +214,8 @@ def find_similar(id):
 
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
-    if current_user.is_authenticated:
-        return redirect('/persons')
+    # if current_user.is_authenticated:
+    #     return redirect('/persons')
 
     if request.method == 'POST':
         email = request.form['email']
@@ -229,8 +229,8 @@ def login():
 
 @app.route('/register', methods=['POST', 'GET'])
 def register():
-    if current_user.is_authenticated:
-        return redirect('/persons')
+    # if current_user.is_authenticated:
+    #     return redirect('/persons')
 
     if request.method == 'POST':
         email = request.form['email']
@@ -244,6 +244,19 @@ def register():
         return jsonify(user)
     return render_template('register.html')
 
+@app.route('/api/users', methods=["GET"])
+def get_users():
+    users = user_controller.get_users()
+    user_list = []
+    for user in users:
+        user_list.append(
+            {
+                "id": user[0],
+                "name": user[1],
+                "email": user[2],
+            }
+        )
+    return jsonify(user_list)
 
 @app.route('/logout')
 def logout():
