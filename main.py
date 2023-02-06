@@ -222,8 +222,8 @@ def login():
         password= request.form['password']
         user = user_controller.get_by_email(email)
         if user is not None :
-            login_user(user)
-            return redirect('/persons')
+            # login_user(user)
+            return redirect('/api/persons')
 
     return render_template('login.html')
 
