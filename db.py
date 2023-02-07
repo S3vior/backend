@@ -9,14 +9,23 @@ def get_db():
 
 def create_tables():
     tables = [
-        """CREATE TABLE IF NOT EXISTS persons(
+        """CREATE TABLE IF NOT EXISTS MissingPerson(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 age INTEGER,
                 description TEXT,
+                date TEXT,
                 image Text,
-				message TEXT
-            )
+				gender TEXT )
+            """,
+             """CREATE TABLE IF NOT EXISTS FindedPerson(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                age INTEGER,
+                description TEXT,
+                date TEXT,
+                image Text,
+				gender TEXT )
             """,
             """CREATE TABLE IF NOT EXISTS users(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

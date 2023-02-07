@@ -1,9 +1,8 @@
 """
     API REST con Python 3 y SQLite 3
 """
-from flask import Flask, jsonify, request, redirect ,render_template
-import person_controller
-import user_controller
+from flask import Flask, jsonify, request, redirect ,render_template ,  make_response
+import missing_person_controller , user_controller , faces_controller ,finded_person_controller
 import face_recognition
 from db import create_tables
 import json
@@ -15,20 +14,34 @@ import urllib.request
 import ast
 import numpy as np
 
-from flask_login import current_user, login_user ,LoginManager ,logout_user ,login_required
-from werkzeug.security import generate_password_hash, check_password_hash
+import time
+import atexit
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# from flask_login import current_user, login_user ,LoginManager ,logout_user ,login_required
+# from werkzeug.security import generate_password_hash, check_password_hash
 
 
 app = Flask(__name__)
 
 
 
-login = LoginManager()
+# login = LoginManager()
 
 # @app.before_first_request
 # def create_all():
 #    db.create_all()
+# Declaration of the task as a function.
+def print_date_time():
+    print(time.strftime("%A, %d. %B %Y %I:%M:%S %p"))
 
+
+scheduler = BackgroundScheduler()
+# Create the job
+scheduler.add_job(func=print_date_time, trigger="interval", seconds=30)
+# Start the scheduler
+scheduler.start()
 
 cloudinary.config(
   cloud_name = "khaledelabady11",
@@ -52,7 +65,7 @@ def allowed_file(filename):
 
 
 def detect_faces_in_image(person_id):
-    person = person_controller.get_by_id(person_id)
+    person = missing_person_controller.get_by_id(person_id)
     response = urllib.request.urlopen(person[5])
     image = face_recognition.load_image_file(response)
     face_encodings = face_recognition.face_encodings(image)[0]
@@ -66,9 +79,9 @@ def detect_faces_in_image(person_id):
 # def check_password(self,password):
 #      return check_password_hash(self.password_hash,password)
 
-@login.user_loader
-def load_user(id):
-    return user_controller.get_by_id(id)
+# @login.user_loader
+# def load_user(id):
+#     return user_controller.get_by_id(id)
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -83,12 +96,13 @@ def upload_image():
     # Check if a valid image file was uploaded
     if request.method == 'POST':
         name = request.form.get("name")
-        message = request.form.get("message")
         age = request.form.get("age")
         description = request.form.get("description")
+        date = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
         file =request.files["file"]
         image= uploader(file)
-        result = person_controller.insert_person(name,age,message,description,image)
+        gender=request.form.get("gender")
+        result = missing_person_controller.insert_person(name,age,description,date,image,gender)
         return jsonify(result)
 
 
@@ -97,7 +111,7 @@ def upload_image():
 
 @app.route('/persons', methods=["GET"])
 def list_persons():
-    persons = person_controller.get_persons()
+    persons = missing_person_controller.get_persons()
 
     return render_template("index.html",data = persons)
 
@@ -112,7 +126,7 @@ def list_persons():
 
 @app.route('/api/persons', methods=["GET"])
 def get_persons():
-    persons = person_controller.get_persons()
+    persons = missing_person_controller.get_persons()
     person_list = []
     for person in persons:
         # detect_faces_in_image(person[0])
@@ -122,8 +136,10 @@ def get_persons():
                 "name": person[1],
                 "age": person[2],
                 "description": person[3],
-                "message": person[4],
-                "image": person[5]
+                "date": person[4],
+                "image": person[5],
+                "gender": person[6]
+
             }
         )
     return jsonify(person_list)
@@ -139,7 +155,7 @@ def insert_person():
     message = person_details["message"]
     age = person_details["age"]
     description = person_details["description"]
-    result = person_controller.insert_person(name,age,description, message,image)
+    result = missing_person_controller.insert_person(name,age,description, message,image)
     return jsonify(result)
 
 
@@ -148,20 +164,20 @@ def update_person(id):
     person_details = request.get_json()
     name = person_details["name"]
     message = person_details["message"]
-    result = person_controller.update_person(id,name, message)
+    result = missing_person_controller.update_person(id,name, message)
     return jsonify(result)
 
 
 @app.route("/api/persons/<id>", methods=["DELETE"])
 def delete_person(id):
-    result = person_controller.delete_person(id)
+    result = missing_person_controller.delete_person(id)
     return jsonify(result)
 
 
 
 @app.route("/api/persons/<id>", methods=["GET"])
 def get_person_by_id(id):
-    person = person_controller.get_by_id(id)
+    person = missing_person_controller.get_by_id(id)
     json_str= {
                 "id": person[0],
                 "name": person[1],
@@ -190,8 +206,8 @@ def get_faces():
 
 @app.route("/api/persons/<id>/similar")
 def find_similar(id):
-    persons = person_controller.get_persons()
-    person= person_controller.get_by_id(id)
+    persons = missing_person_controller.get_persons()
+    person= missing_person_controller.get_by_id(id)
     response = urllib.request.urlopen(person[5])
     image = face_recognition.load_image_file(response)
     p1= face_recognition.face_encodings(image)
@@ -223,7 +239,7 @@ def login():
         user = user_controller.get_by_email(email)
         if user is not None :
             # login_user(user)
-            return redirect('/api/persons')
+            return "Success", 200
 
     return render_template('login.html')
 
@@ -238,10 +254,10 @@ def register():
         password = request.form['password']
 
         if user_controller.get_by_email(email):
-            return ('Email already Present')
+            return ('Email already Present') , 400   # Bad Request 
 
         user = user_controller.insert_user(name,email,password)
-        return jsonify(user)
+        return "Success", 200
     return render_template('register.html')
 
 @app.route('/api/users', methods=["GET"])
@@ -260,8 +276,8 @@ def get_users():
 
 @app.route('/logout')
 def logout():
-    logout_user()
-    return redirect('/blogs')
+    # logout_user()
+    return redirect('/register')
 
 if __name__ == "__main__":
     create_tables()
