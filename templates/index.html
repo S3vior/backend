@@ -2,7 +2,6 @@
 <html>
     <style>
     table {
-
         font-family: arial, sans-serif;
 
         border-collapse: collapse;
@@ -14,7 +13,7 @@
 
       td, th {
 
-        border: 1px solid #dddddd;
+        border: 1px solid #ffffff;
 
         text-align: left;
 
@@ -25,7 +24,7 @@
 
       tr:nth-child(even) {
 
-        background-color: #dddddd;
+        background-color: #ffffff;
 
       }
 
@@ -36,8 +35,10 @@
             <th>Name</td>
             <th>Age</td>
             <th>Description</td>
-            <th>Message</td>
+            <th>Date</td>
             <th>Image</td>
+            <th>Gender</td>
+
 
         </tr>
         </thead>
@@ -50,6 +51,7 @@
                     <th>{{ person[3] }}</td>
                     <th>{{ person[4] }}</td>
                     <th>{{ person[5] }}</td>
+                    <th>{{ person[6] }}</td>
 
                 </tr>
         {% endfor %}

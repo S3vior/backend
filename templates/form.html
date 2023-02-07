@@ -2,9 +2,30 @@
 <html>
 <style>
 input[type=text], select {
-  width: 100%;
+  width: 40;
   padding: 12px 20px;
-  margin: 8px 0;
+  margin-left: 60px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+input[type=INT], select {
+  width: 10%;
+  padding: 12px 20px;
+  margin-bottom: 6px 0;
+  margin-right: 100px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+label, select {
+  width:40;
+  padding: 12px 20px;
+  margin-bottom: 6px 0;
+  margin-right: 100px 0;
   display: inline-block;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -12,7 +33,7 @@ input[type=text], select {
 }
 
 input[type=submit] {
-  width: 100%;
+  width: 35%;
   background-color: #4CAF50;
   color: white;
   padding: 14px 20px;
@@ -45,20 +66,20 @@ div {
 </form> -->
 <form action="" method="POST" enctype="multipart/form-data">
   <div class="form-example">
-    <label for="name">Enter your name: </label>
+    <label for="name">name: </label>
     <input type="text" name="name" id="name" required>
   </div>
   <div class="form-example">
-    <label for="age">Enter your Age: </label>
+    <label for="age">Age: </label>
     <input type="INT" name="age" id="age" required>
   </div>
   <div class="form-example">
-    <label for="message">Enter your message: </label>
-    <input type="text" name="message" id="message" required>
+    <label for="description">description: </label>
+    <input type="text" name="description" id="description" required >
   </div>
   <div class="form-example">
-    <label for="description">Enter your description: </label>
-    <input type="text" name="description" id="description" required>
+    <label for="gender">gender: </label>
+    <input type="text" name="gender" id="gender" required>
   </div>
   <div class="form-example">
     <label for="Image">Add Image: </label>
