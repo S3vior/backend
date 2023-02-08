@@ -90,7 +90,7 @@ def detect_faces_in_image(person_id):
 
 
 
-@app.route('/person', methods=['GET', 'POST'])
+@app.route('/missing_person', methods=['GET', 'POST'])
 def upload_image():
 
     # Check if a valid image file was uploaded
@@ -109,7 +109,7 @@ def upload_image():
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
 
-@app.route('/persons', methods=["GET"])
+@app.route('/missing_persons', methods=["GET"])
 def list_persons():
     persons = missing_person_controller.get_persons()
 
@@ -124,9 +124,29 @@ def list_persons():
 
 
 
-@app.route('/api/persons', methods=["GET"])
-def get_persons():
+@app.route('/api/missing_persons', methods=["GET"])
+def get_missing_persons():
     persons = missing_person_controller.get_persons()
+    person_list = []
+    for person in persons:
+        # detect_faces_in_image(person[0])
+        person_list.append(
+            {
+                "id": person[0],
+                "name": person[1],
+                "age": person[2],
+                "description": person[3],
+                "date": person[4],
+                "image": person[5],
+                "gender": person[6]
+
+            }
+        )
+    return jsonify(person_list)
+
+@app.route('/api/finded_persons', methods=["GET"])
+def get_finded_persons():
+    persons = finded_person_controller.get_persons()
     person_list = []
     for person in persons:
         # detect_faces_in_image(person[0])
@@ -146,20 +166,34 @@ def get_persons():
 
 
 
-@app.route("/api/persons", methods=["POST"])
-def insert_person():
+@app.route("/api/missing_persons", methods=["POST"])
+def insert_missing_person():
     person_details = request.get_json()
     name = person_details["name"]
     file = person_details["image"]
     image = uploader(file)
-    message = person_details["message"]
+    date = person_details["date"]
+    gender = person_details["gender"]
     age = person_details["age"]
     description = person_details["description"]
-    result = missing_person_controller.insert_person(name,age,description, message,image)
+    result = finded_person_controller.insert_person(name,age,description,date,image,gender)
+    return jsonify(result)
+
+@app.route("/api/finded_persons", methods=["POST"])
+def insert_finded_person():
+    person_details = request.get_json()
+    name = person_details["name"]
+    file = person_details["image"]
+    image = uploader(file)
+    date = person_details["date"]
+    gender = person_details["gender"]
+    age = person_details["age"]
+    description = person_details["description"]
+    result = finded_person_controller.insert_person(name,age,description, date,image,gender)
     return jsonify(result)
 
 
-@app.route("/api/persons/<id>", methods=["PUT"])
+@app.route("/api/missing_persons/<id>", methods=["PUT"])
 def update_person(id):
     person_details = request.get_json()
     name = person_details["name"]
@@ -168,14 +202,14 @@ def update_person(id):
     return jsonify(result)
 
 
-@app.route("/api/persons/<id>", methods=["DELETE"])
+@app.route("/api/missing_persons/<id>", methods=["DELETE"])
 def delete_person(id):
     result = missing_person_controller.delete_person(id)
     return jsonify(result)
 
 
 
-@app.route("/api/persons/<id>", methods=["GET"])
+@app.route("/api/missing_persons/<id>", methods=["GET"])
 def get_person_by_id(id):
     person = missing_person_controller.get_by_id(id)
     json_str= {
@@ -204,16 +238,16 @@ def get_faces():
         )
     return jsonify(face_list)
 
-@app.route("/api/persons/<id>/similar")
+@app.route("/api/missing_persons/<id>/similar")
 def find_similar(id):
-    persons = missing_person_controller.get_persons()
+    persons = finded_person_controller.get_persons()
     person= missing_person_controller.get_by_id(id)
     response = urllib.request.urlopen(person[5])
     image = face_recognition.load_image_file(response)
     p1= face_recognition.face_encodings(image)
     for x in persons:
-        if x == person:
-            continue
+        # if x == person:
+        #     continue
         response2 = urllib.request.urlopen(x[5])
         image2 = face_recognition.load_image_file(response2)
         p2 =face_recognition.face_encodings(image2)
@@ -254,7 +288,7 @@ def register():
         password = request.form['password']
 
         if user_controller.get_by_email(email):
-            return ('Email already Present') , 400   # Bad Request 
+            return ('Email already Present') , 400   # Bad Request
 
         user = user_controller.insert_user(name,email,password)
         return "Success", 200
