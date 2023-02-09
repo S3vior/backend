@@ -16,7 +16,9 @@ def create_tables():
                 description TEXT,
                 date TEXT,
                 image Text,
-				gender TEXT )
+				gender TEXT ,
+                existence BOOLEAN,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
             """,
              """CREATE TABLE IF NOT EXISTS FindedPerson(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,13 +27,16 @@ def create_tables():
                 description TEXT,
                 date TEXT,
                 image Text,
-				gender TEXT )
+				gender TEXT,
+                existence BOOLEAN,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP )
             """,
             """CREATE TABLE IF NOT EXISTS users(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email EMAIL TEXT NOT NULL,
                 password TEXT NOT NULL ,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT email_unique UNIQUE (email)
             )
              """,
