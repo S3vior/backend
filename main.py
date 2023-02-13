@@ -2,7 +2,7 @@
     API REST con Python 3 y SQLite 3
 """
 from flask import Flask, jsonify, request, redirect ,render_template ,  make_response
-import missing_person_controller , user_controller , faces_controller ,finded_person_controller
+import missing_person_controller , user_controller , faces_controller ,found_persons_controller
 import face_recognition
 from db import create_tables
 import json
@@ -18,6 +18,9 @@ import time
 import atexit
 
 from apscheduler.schedulers.background import BackgroundScheduler
+
+import requests
+from bs4 import BeautifulSoup
 
 # from flask_login import current_user, login_user ,LoginManager ,logout_user ,login_required
 # from werkzeug.security import generate_password_hash, check_password_hash
@@ -39,9 +42,9 @@ def print_date_time():
 
 scheduler = BackgroundScheduler()
 # Create the job
-scheduler.add_job(func=print_date_time, trigger="interval", seconds=30)
-# Start the scheduler
-scheduler.start()
+# scheduler.add_job(func=print_date_time, trigger="interval", seconds=30)
+# # Start the scheduler
+# scheduler.start()
 
 cloudinary.config(
   cloud_name = "khaledelabady11",
@@ -58,6 +61,28 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
 
+
+def cricgfg():
+	html_text = requests.get('https://atfalmafkoda.com/ar/home').text
+	soup = BeautifulSoup(html_text, "html.parser")
+	sect = soup.find_all('div', class_='swiper-slide mb-md-5 mb-4')
+	section = sect[0]
+	description = section.find('article', class_='person_info d-flex flex-column align-items-center justify-content-center text-center')
+	result = {
+			"Description": description
+		}
+	return jsonify(result)
+@app.route('/source_persons')
+def scrap_img():
+    htmldata=requests.get('https://atfalmafkoda.com/ar/home').text
+    soup = BeautifulSoup(htmldata, 'html.parser')
+    images = soup.find_all('div' , class_='slid_img')
+    res =[]
+    for item in images:
+       res.append({"name": (item.h1.text),
+       "image": ("https://atfalmafkoda.com"+item.img["src"]),
+       "date":(item.p.text)})
+    return jsonify(res)
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -98,14 +123,12 @@ def upload_image():
         name = request.form.get("name")
         age = request.form.get("age")
         description = request.form.get("description")
-        date = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
+        created_at = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
         file =request.files["file"]
         image= uploader(file)
         gender=request.form.get("gender")
-        result = missing_person_controller.insert_person(name,age,description,date,image,gender)
+        result = missing_person_controller.insert_person(name,age,description,gender,image,created_at)
         return jsonify(result)
-
-
     # If no valid image file was uploaded, show the file upload form:
     return render_template("form.html")
 
@@ -136,30 +159,29 @@ def get_missing_persons():
                 "name": person[1],
                 "age": person[2],
                 "description": person[3],
-                "date": person[4],
+                "gender": person[4],
                 "image": person[5],
-                "gender": person[6]
-
+                "created_at": person[6],
             }
         )
     return jsonify(person_list)
 
-@app.route('/api/finded_persons', methods=["GET"])
+@app.route('/api/found_persons', methods=["GET"])
 def get_finded_persons():
-    persons = finded_person_controller.get_persons()
+    persons = found_persons_controller.get_persons()
     person_list = []
     for person in persons:
         # detect_faces_in_image(person[0])
         person_list.append(
             {
-                "id": person[0],
+               "id": person[0],
                 "name": person[1],
                 "age": person[2],
                 "description": person[3],
-                "date": person[4],
-                "image": person[5],
-                "gender": person[6]
-
+                "image": person[4],
+                "gender": person[5],
+                "created_at": person[6],
+                # "m_id":person[7]
             }
         )
     return jsonify(person_list)
@@ -172,24 +194,26 @@ def insert_missing_person():
     name = person_details["name"]
     file = person_details["image"]
     image = uploader(file)
-    date = person_details["date"]
     gender = person_details["gender"]
     age = person_details["age"]
     description = person_details["description"]
-    result = finded_person_controller.insert_person(name,age,description,date,image,gender)
+    created_at = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
+
+    result = missing_person_controller.insert_person(name,age,description,gender,image,created_at)
     return jsonify(result)
 
-@app.route("/api/finded_persons", methods=["POST"])
-def insert_finded_person():
+@app.route("/api/found_persons", methods=["POST"])
+def insert_founded_person():
     person_details = request.get_json()
     name = person_details["name"]
     file = person_details["image"]
     image = uploader(file)
-    date = person_details["date"]
     gender = person_details["gender"]
     age = person_details["age"]
     description = person_details["description"]
-    result = finded_person_controller.insert_person(name,age,description, date,image,gender)
+    created_at = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
+
+    result = found_persons_controller.insert_person(name,age,description,gender,image,created_at)
     return jsonify(result)
 
 
@@ -217,8 +241,9 @@ def get_person_by_id(id):
                 "name": person[1],
                 "age": person[2],
                 "description": person[3],
-                "message": person[4],
-                "image": person[5]
+                "gender": person[4],
+                "image": person[5],
+                "created_at":person[6]
             }
     return jsonify(json_str)
 
@@ -240,27 +265,64 @@ def get_faces():
 
 @app.route("/api/missing_persons/<id>/similar")
 def find_similar(id):
-    persons = finded_person_controller.get_persons()
+    persons = found_persons_controller.get_persons()
     person= missing_person_controller.get_by_id(id)
-    response = urllib.request.urlopen(person[5])
+    # person= person_controller.get_by_id(id)
+    response = urllib.request.urlopen(person[4])
     image = face_recognition.load_image_file(response)
     p1= face_recognition.face_encodings(image)
     for x in persons:
         # if x == person:
         #     continue
-        response2 = urllib.request.urlopen(x[5])
+        response2 = urllib.request.urlopen(x[4])
         image2 = face_recognition.load_image_file(response2)
         p2 =face_recognition.face_encodings(image2)
+        res = []
         if len(p1) > 0:
-
              match_results = face_recognition.compare_faces([p1[0]], p2[0])
              if match_results[0] == True:
-               str = "May be the person with id = {}"
-               return jsonify(str.format(x[0]))
+               res.append({"id":x[0],
+               "name":x[1],
+               "age": x[2],
+               "description":x[3],
+               "gender": x[4],
+               "image": x[5],
+               "created_at": x[6]})
+               return jsonify(res)
+    return jsonify(json.dumps("not exited yet!"))
 
 
+
+@app.route("/api/similars")
+def similars():
+    missing_persons = found_persons_controller.get_persons()
+    finded_persons= missing_person_controller.get_persons()
+    # response = urllib.request.urlopen(person[5])
+    # image = face_recognition.load_image_file(response)
+    # p1= face_recognition.face_encodings(image)
+    for missed in missing_persons:
+        # if x == person:
+        #     continue
+        response = urllib.request.urlopen(missed[4])
+        image = face_recognition.load_image_file(response)
+        p1= face_recognition.face_encodings(image)
+        for found in finded_persons:
+            response2 = urllib.request.urlopen(found[5])
+            image2 = face_recognition.load_image_file(response2)
+            p2 =face_recognition.face_encodings(image2)
+            if len(p1) > 0:
+
+               match_results = face_recognition.compare_faces([p1[0]], p2[0])
+               if match_results[0] == True:
+                #   str = "May be the person with id = {}"
+                  found[8]=missed[0]
+                  return jsonify(found[0])
 
     return jsonify(json.dumps("not exited"))
+
+
+
+
 
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
