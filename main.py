@@ -72,7 +72,7 @@ def cricgfg():
 			"Description": description
 		}
 	return jsonify(result)
-@app.route('/source_persons')
+@app.route('/scraper')
 def scrap_img():
     htmldata=requests.get('https://atfalmafkoda.com/ar/home').text
     soup = BeautifulSoup(htmldata, 'html.parser')
@@ -178,10 +178,9 @@ def get_finded_persons():
                 "name": person[1],
                 "age": person[2],
                 "description": person[3],
-                "image": person[4],
-                "gender": person[5],
-                "created_at": person[6],
-                # "m_id":person[7]
+                "gender": person[4],
+                "image": person[5],
+                "created_at": person[6]
             }
         )
     return jsonify(person_list)
@@ -247,6 +246,11 @@ def get_person_by_id(id):
             }
     return jsonify(json_str)
 
+@app.route("/api/found_person/<id>", methods=["DELETE"])
+def delete_founded_person(id):
+    found_persons_controller.delete_person(id)
+    return "true"
+
 
 #get Face_encodings
 @app.route('/api/faces', methods=["GET"])
@@ -272,9 +276,7 @@ def find_similar(id):
     image = face_recognition.load_image_file(response)
     p1= face_recognition.face_encodings(image)
     for x in persons:
-        # if x == person:
-        #     continue
-        response2 = urllib.request.urlopen(x[4])
+        response2 = urllib.request.urlopen(x[5])
         image2 = face_recognition.load_image_file(response2)
         p2 =face_recognition.face_encodings(image2)
         res = []
