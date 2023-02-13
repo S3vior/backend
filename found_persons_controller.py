@@ -1,11 +1,11 @@
 from db import get_db
 
 
-def insert_person(name,age,description,date,gender,image):
+def insert_person(name,age,description,gender,image,created_at):
     db = get_db()
     cursor = db.cursor()
-    statement = "INSERT INTO FindedPerson(name,age,description,date,gender,image) VALUES (?,?,?,?,?,?)"
-    cursor.execute(statement, [name,age,description,date,gender,image])
+    statement = "INSERT INTO FoundPerson(name,age,description,gender,image,created_at) VALUES (?,?,?,?,?,?)"
+    cursor.execute(statement, [name,age,description,gender,image,created_at])
     db.commit()
     return True
 
@@ -13,7 +13,7 @@ def insert_person(name,age,description,date,gender,image):
 def update_person(id ,name,message):
     db = get_db()
     cursor = db.cursor()
-    statement = "UPDATE FindedPerson SET name = ?, message = ? WHERE id = ?"
+    statement = "UPDATE FoundPerson SET name = ?, message = ? WHERE id = ?"
     cursor.execute(statement, [id, name, message])
     db.commit()
     return True
@@ -22,7 +22,7 @@ def update_person(id ,name,message):
 def delete_person(id):
     db = get_db()
     cursor = db.cursor()
-    statement = "DELETE FROM FindedPerson WHERE id = ?"
+    statement = "DELETE FROM FoundPerson WHERE id = ?"
     cursor.execute(statement, [id])
     db.commit()
     return True
@@ -31,7 +31,7 @@ def delete_person(id):
 def get_by_id(id):
     db = get_db()
     cursor = db.cursor()
-    statement = "SELECT name,age,description,date,gender,image FROM FindedPerson WHERE id = ?"
+    statement = "SELECT name,age,description,gender,image,created_at FROM FoundPerson WHERE id = ?"
     cursor.execute(statement, [id])
     return cursor.fetchone()
 
@@ -39,7 +39,7 @@ def get_by_id(id):
 def get_persons():
     db = get_db()
     cursor = db.cursor()
-    query = "SELECT id, name,age,description,date,gender,image FROM FindedPerson"
+    query = "SELECT id, name,age,description,gender,image ,created_at FROM FoundPerson"
     cursor.execute(query)
     persons = cursor.fetchall()
     return persons

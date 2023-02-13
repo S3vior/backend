@@ -1,11 +1,11 @@
 from db import get_db
 
 
-def insert_person(name,age,description,date,gender,image):
+def insert_person(name,age,description,gender,image,created_at):
     db = get_db()
     cursor = db.cursor()
-    statement = "INSERT INTO MissingPerson(name,age,description,date,gender,image) VALUES (?,?,?,?,?,?)"
-    cursor.execute(statement, [name,age,description,date,gender,image])
+    statement = "INSERT INTO MissingPerson(name,age,description,gender,image,created_at) VALUES (?,?,?,?,?,?)"
+    cursor.execute(statement, [name,age,description,gender,image,created_at])
     db.commit()
     return True
 
@@ -31,7 +31,7 @@ def delete_person(id):
 def get_by_id(id):
     db = get_db()
     cursor = db.cursor()
-    statement = "SELECT name,age,description,date,gender,image FROM MissingPerson WHERE id = ?"
+    statement = "SELECT name,age,description,gender,image,created_at FROM MissingPerson WHERE id = ?"
     cursor.execute(statement, [id])
     return cursor.fetchone()
 
@@ -39,9 +39,7 @@ def get_by_id(id):
 def get_persons():
     db = get_db()
     cursor = db.cursor()
-    query = "SELECT id, name,age,description,date,gender,image FROM MissingPerson"
+    query = "SELECT id, name,age,description,gender,image,created_at FROM MissingPerson"
     cursor.execute(query)
     persons = cursor.fetchall()
     return persons
-
-

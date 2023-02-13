@@ -14,31 +14,29 @@ def create_tables():
                 name TEXT NOT NULL,
                 age INTEGER,
                 description TEXT,
-                date TEXT,
                 image Text,
 				gender TEXT ,
                 existence BOOLEAN,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+                created_at TEXT)
             """,
-             """CREATE TABLE IF NOT EXISTS FindedPerson(
+             """CREATE TABLE IF NOT EXISTS FoundPerson(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 age INTEGER,
                 description TEXT,
-                date TEXT,
                 image Text,
 				gender TEXT,
                 existence BOOLEAN,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP )
+                created_at TEXT,
+                FOREIGN KEY(id) REFERENCES FoundPerson(id)
+                 )
             """,
             """CREATE TABLE IF NOT EXISTS users(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email EMAIL TEXT NOT NULL,
                 password TEXT NOT NULL ,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT email_unique UNIQUE (email)
-            )
+            CONSTRAINT email_unique UNIQUE (email))
              """,
             # # """
             #      CREATE TABLE IF NOT EXISTS faces (person_id INTEGER, data json )""",
