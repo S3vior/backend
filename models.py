@@ -1,26 +1,47 @@
-# from flask_sqlalchemy import SQLAlchemy
-# from flask_login import UserMixin
-# from werkzeug.security import generate_password_hash, check_password_hash
-# from flask_login import LoginManager
+from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 
-# login = LoginManager()
-# db = SQLAlchemy()
+# create the engine
+engine = create_engine('sqlite:///missing_persons.db', echo=True)
 
-# class UserModel(UserMixin, db.Model):
-#     __tablename__ = 'users'
+# create the base object
+Base = declarative_base()
 
-#     id = db.Column(db.Integer, primary_key=True)
-#     email = db.Column(db.String(80), unique=True)
-#     username = db.Column(db.String(100))
-#     password_hash = db.Column(db.String())
+# define the Person model
+class Person(Base):
+    __tablename__ = 'persons'
 
-#     def set_password(self,password):
-#         self.password_hash = generate_password_hash(password)
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    age = Column(Integer)
+    gender = Column(String)
+    description = Column(String)
+    image = Column(String)
+    type = Column(String)
+    created_at = Column(DateTime, default=datetime.now)
 
-#     def check_password(self,password):
-#         return check_password_hash(self.password_hash,password)
+    # define the relationship with User
+    user_id = Column(Integer, ForeignKey('users.id'))
+    user = relationship("User", back_populates="persons")
 
+    def __repr__(self):
+        return f"<Person(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type})>"
 
-# @login.user_loader
-# def load_user(id):
-#     return UserModel.query.get(int(id))
+# define the User model
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    user_name = Column(String)
+    phone_number = Column(String)
+    password = Column(String)
+    # define the relationship with Person
+    persons = relationship("Person", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, user_name={self.user_name}, phone_number={self.phone_number})>"
+
+# create the tables
+Base.metadata.create_all(engine)

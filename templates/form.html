@@ -21,7 +21,16 @@ input[type=INT], select {
   box-sizing: border-box;
 }
 
-label, select {
+label {
+  width: 40;
+  padding: 12px 20px;
+  margin-left: 60px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+ select {
   width:40;
   padding: 12px 20px;
   margin-bottom: 6px 0;
@@ -82,9 +91,19 @@ div {
     <input type="text" name="gender" id="gender" required>
   </div>
   <div class="form-example">
+    <select name="type">
+      <option value="missed">Missed</option>
+      <option value="founded">Founded</option>
+  </select><br>
+
+  </div>
+  <div class="form-example">
     <label for="Image">Add Image: </label>
     <input type="file" name="file" id="file" required>
   </div>
+
+  <input type="number" name="user_id" placeholder="User ID"><br>
+
     <input type="submit" value="Upload">
 </form>
 
