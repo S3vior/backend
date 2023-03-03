@@ -26,12 +26,22 @@ import requests
 from bs4 import BeautifulSoup
 
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 
 
 from models import Person
+from models import User
+
+from flask_jwt_extended import (
+    JWTManager, jwt_required, create_access_token,
+    get_jwt_identity
+)
 
 app = Flask(__name__)
+
+app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
+jwt = JWTManager(app)
 
 engine = create_engine('sqlite:///missing_persons.db', echo=True)
 Session = sessionmaker(bind=engine)
@@ -76,6 +86,80 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 # 			"Description": description
 # 		}
 # 	return jsonify(result)
+
+
+# --------------------------------------------------------------------------------------------------------------
+# Authentication
+# --------------------------------------------------------------------------------------------------------------
+
+
+# define the authentication endpoints
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    # get user data from request
+    user_data = request.get_json()
+
+    # create a new user object
+    user = User(
+        user_name=user_data['user_name'],
+        phone_number=user_data['phone_number'],
+        password=user_data['password']
+    )
+
+    # add the user object to the database
+    try:
+        session = Session()
+        session.add(user)
+        session.commit()
+        return jsonify({'message': 'User created successfully'}), 201
+    except IntegrityError:
+        session.rollback()
+        return jsonify({'message': 'User already exists'}), 400
+    finally:
+        session.close()
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    # get user credentials from request
+    user_data = request.get_json()
+    user_name = user_data['user_name']
+    password = user_data['password']
+
+    # query the user from the database
+    session = Session()
+    user = session.query(User).filter_by(user_name=user_name).first()
+    session.close()
+
+    # check if the user exists and the password matches
+    if user and user.password == password:
+        # generate an access token
+        access_token = create_access_token(identity=user.id)
+        return jsonify({'access_token': access_token}), 200
+    else:
+        return jsonify({'message': 'Invalid user name or password'}), 401
+
+@app.route('/api/me', methods=['GET'])
+@jwt_required()
+def get_user():
+    # get the user id from the access token
+    user_id = get_jwt_identity()
+
+    # query the user from the database
+    session = Session()
+    user = session.query(User).get(user_id)
+    session.close()
+
+    # return the user data
+    return jsonify({
+        'id': user.id,
+        'user_name': user.user_name,
+        'phone_number': user.phone_number,
+    }), 200
+# --------------------------------------------------------------------------------------------------------------
+# Authentication
+# --------------------------------------------------------------------------------------------------------------
+
+
 
 
 @app.route('/scraper')
@@ -349,62 +433,6 @@ def similars():
                     return jsonify(found[0])
 
     return jsonify(json.dumps("not exited"))
-
-
-@app.route('/login', methods=['POST', 'GET'])
-def login():
-    # if current_user.is_authenticated:
-    #     return redirect('/persons')
-
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        user = user_controller.get_by_email(email)
-        if user is not None:
-            # login_user(user)
-            return "Success", 200
-
-    return render_template('login.html')
-
-
-@app.route('/register', methods=['POST', 'GET'])
-def register():
-    # if current_user.is_authenticated:
-    #     return redirect('/persons')
-
-    if request.method == 'POST':
-        email = request.form['email']
-        name = request.form['username']
-        password = request.form['password']
-
-        if user_controller.get_by_email(email):
-            return ('Email already Present'), 400   # Bad Request
-
-        user = user_controller.insert_user(name, email, password)
-        return "Success", 200
-    return render_template('register.html')
-
-
-@app.route('/api/users', methods=["GET"])
-def get_users():
-    users = user_controller.get_users()
-    user_list = []
-    for user in users:
-        user_list.append(
-            {
-                "id": user[0],
-                "name": user[1],
-                "email": user[2],
-            }
-        )
-    return jsonify(user_list)
-
-
-@app.route('/logout')
-def logout():
-    # logout_user()
-    return redirect('/register')
-
 
 if __name__ == "__main__":
     create_tables()
