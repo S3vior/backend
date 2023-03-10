@@ -2,12 +2,8 @@
     API REST con Python 3 y SQLite 3
 """
 from flask import Flask, jsonify, request, redirect, render_template,  make_response
-import missing_person_controller
-import user_controller
-import faces_controller
-import found_persons_controller
+
 import face_recognition
-from db import create_tables
 import json
 import cloudinary
 from cloudinary.uploader import upload
@@ -37,8 +33,10 @@ from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
     get_jwt_identity
 )
-
+from auth import auth_app
 app = Flask(__name__)
+
+app.register_blueprint(auth_app)
 
 app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
 jwt = JWTManager(app)
@@ -74,92 +72,6 @@ def uploader(file):
 
 # You can change this to any folder on your system
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-
-# def cricgfg():
-# 	html_text = requests.get('https://atfalmafkoda.com/ar/home').text
-# 	soup = BeautifulSoup(html_text, "html.parser")
-# 	sect = soup.find_all('div', class_='swiper-slide mb-md-5 mb-4')
-# 	section = sect[0]
-# 	description = section.find('article', class_='person_info d-flex flex-column align-items-center justify-content-center text-center')
-# 	result = {
-# 			"Description": description
-# 		}
-# 	return jsonify(result)
-
-
-# --------------------------------------------------------------------------------------------------------------
-# Authentication
-# --------------------------------------------------------------------------------------------------------------
-
-
-# define the authentication endpoints
-@app.route('/api/auth/register', methods=['POST'])
-def register():
-    # get user data from request
-    user_data = request.get_json()
-
-    # create a new user object
-    user = User(
-        user_name=user_data['user_name'],
-        phone_number=user_data['phone_number'],
-        password=user_data['password']
-    )
-
-    # add the user object to the database
-    try:
-        session = Session()
-        session.add(user)
-        session.commit()
-        return jsonify({'message': 'User created successfully'}), 201
-    except IntegrityError:
-        session.rollback()
-        return jsonify({'message': 'User already exists'}), 400
-    finally:
-        session.close()
-
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    # get user credentials from request
-    user_data = request.get_json()
-    user_name = user_data['user_name']
-    password = user_data['password']
-
-    # query the user from the database
-    session = Session()
-    user = session.query(User).filter_by(user_name=user_name).first()
-    session.close()
-
-    # check if the user exists and the password matches
-    if user and user.password == password:
-        # generate an access token
-        access_token = create_access_token(identity=user.id)
-        return jsonify({'access_token': access_token}), 200
-    else:
-        return jsonify({'message': 'Invalid user name or password'}), 401
-
-@app.route('/api/me', methods=['GET'])
-@jwt_required()
-def get_user():
-    # get the user id from the access token
-    user_id = get_jwt_identity()
-
-    # query the user from the database
-    session = Session()
-    user = session.query(User).get(user_id)
-    session.close()
-
-    # return the user data
-    return jsonify({
-        'id': user.id,
-        'user_name': user.user_name,
-        'phone_number': user.phone_number,
-    }), 200
-# --------------------------------------------------------------------------------------------------------------
-# Authentication
-# --------------------------------------------------------------------------------------------------------------
-
-
 
 
 @app.route('/scraper')
@@ -225,10 +137,9 @@ def upload_image():
     return render_template("form.html")
 
 
-@app.route('/missing_persons', methods=["GET"])
+@app.route('/persons', methods=["GET"])
 def list_persons():
-    persons = missing_person_controller.get_persons()
-
+    persons = session.query(Person).all()
     return render_template("index.html", data=persons)
 
 
@@ -297,72 +208,67 @@ def get_founded_persons():
     return persons_json
 
 
-@app.route("/api/missing_persons", methods=["POST"])
-def insert_missing_person():
+@app.route("/api/persons", methods=["POST"])
+@jwt_required
+def insert_person():
     person_details = request.get_json()
-    name = person_details["name"]
-    file = person_details["image"]
+    name = person_details("name")
+    age = person_details("age")
+    description = person_details("description")
+    file = request.files["file"]
     image = uploader(file)
-    gender = person_details["gender"]
-    age = person_details["age"]
-    description = person_details["description"]
-    created_at = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
+    gender = person_details("gender")
+    person_type = person_details['type']
+    user_id = get_jwt_identity()
+    new_person = Person(name=name, age=age, gender=gender, description=description,
+                        image=image, type=person_type, user_id=user_id)
 
-    result = missing_person_controller.insert_person(
-        name, age, description, gender, image, created_at)
-    return jsonify(result)
+    # create a session and add the new person to the database
+    session = Session()
+    session.add(new_person)
+    session.commit()
 
+    # close the session
+    session.close()
 
-@app.route("/api/found_persons", methods=["POST"])
-def insert_founded_person():
-    person_details = request.get_json()
-    name = person_details["name"]
-    file = person_details["image"]
-    image = uploader(file)
-    gender = person_details["gender"]
-    age = person_details["age"]
-    description = person_details["description"]
-    created_at = time.strftime("%A, %d. %B %Y %I:%M:%S %p")
-
-    result = found_persons_controller.insert_person(
-        name, age, description, gender, image, created_at)
-    return jsonify(result)
+    # return the new person as a JSON response
+    return jsonify(new_person.__dict__)
 
 
-@app.route("/api/missing_persons/<id>", methods=["PUT"])
-def update_person(id):
-    person_details = request.get_json()
-    name = person_details["name"]
-    message = person_details["message"]
-    result = missing_person_controller.update_person(id, name, message)
-    return jsonify(result)
+# @app.route("/api/missing_persons/<id>", methods=["PUT"])
+# def update_person(id):
+#     person_details = request.get_json()
+#     name = person_details["name"]
+#     message = person_details["message"]
+#     result = missing_person_controller.update_person(id, name, message)
+#     return jsonify(result)
 
 
-@app.route("/api/missing_persons/<id>", methods=["DELETE"])
-def delete_person(id):
-    result = missing_person_controller.delete_person(id)
-    return jsonify(result)
+# @app.route("/api/persons/<id>", methods=["DELETE"])
+# def delete_person(id):
+#     result = missing_person_controller.delete_person(id)
+#     return jsonify(result)
 
 
-@app.route("/api/missing_persons/<id>", methods=["GET"])
-def get_person_by_id(id):
-    person = missing_person_controller.get_by_id(id)
-    json_str = {
-        "id": person[0],
-        "name": person[1],
-        "age": person[2],
-        "description": person[3],
-        "gender": person[4],
-        "image": person[5],
-        "created_at": person[6]
-    }
-    return jsonify(json_str)
+# @app.route("/api/missing_persons/<id>", methods=["GET"])
+# def get_person_by_id(id):
+#     person = missing_person_controller.get_by_id(id)
+#     json_str = {
+#         "id": person[0],
+#         "name": person[1],
+#         "age": person[2],
+#         "description": person[3],
+#         "gender": person[4],
+#         "image": person[5],
+#         "created_at": person[6]
+#     }
+#     return jsonify(json_str)
 
 
-@app.route("/api/found_person/<id>", methods=["DELETE"])
-def delete_founded_person(id):
-    found_persons_controller.delete_person(id)
-    return "true"
+# @app.route("/api/found_person/<id>", methods=["DELETE"])
+# def delete_founded_person(id):
+#     found_persons_controller.delete_person(id)
+#     return "true"
 
 
 # get Face_encodings
@@ -382,9 +288,8 @@ def delete_founded_person(id):
 
 @app.route("/api/missing_persons/<id>/similar")
 def find_similar(id):
-    persons = found_persons_controller.get_persons()
-    person = missing_person_controller.get_by_id(id)
-    # person= person_controller.get_by_id(id)
+    persons = persons = session.query(Person).filter_by(type="founded")
+    person = session.query(Person).filter_by(id=id)
     response = urllib.request.urlopen(person[4])
     image = face_recognition.load_image_file(response)
     p1 = face_recognition.face_encodings(image)
@@ -434,8 +339,8 @@ def similars():
 
     return jsonify(json.dumps("not exited"))
 
+
 if __name__ == "__main__":
-    create_tables()
     """
     Here you can change debug and port
     Remember that, in order to make this API functional, you must set debug in False
