@@ -67,7 +67,7 @@ def login():
     else:
         return jsonify({'message': 'Invalid user name or password'}), 401
 
-@auth_app.route('/api/me', methods=['GET'])
+@auth_app.route('/api/profile', methods=['GET'])
 @jwt_required()
 def get_user():
     # get the user id from the access token

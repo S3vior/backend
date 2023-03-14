@@ -39,6 +39,8 @@ app = Flask(__name__)
 app.register_blueprint(auth_app)
 
 app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
+app.config['JWT_HEADER_NAME'] = 'token'
+
 jwt = JWTManager(app)
 
 engine = create_engine('sqlite:///missing_persons.db', echo=True)
