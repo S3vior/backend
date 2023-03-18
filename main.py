@@ -314,6 +314,8 @@ def find_similar(id):
     return jsonify(json.dumps("not exited yet!"))
 
 
+
+
 @app.route("/api/similars")
 def similars():
     missing_persons = found_persons_controller.get_persons()
