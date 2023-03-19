@@ -209,6 +209,20 @@ def get_founded_persons():
     # return JSON response
     return persons_json
 
+@app.route('/api/users', methods=["GET"])
+def get_users():
+    users = session.query(User).all()
+
+    # convert persons to JSON
+    users_json = json.dumps([{
+        'id': user.id,
+        'name': user.user_name,
+        # 'token': user.get_access_token(identity=user.id),
+    } for user in users])
+
+    # return JSON response
+    return users_json
+
 
 @app.route("/api/persons", methods=["POST"])
 @jwt_required
@@ -218,7 +232,7 @@ def insert_person():
     age = person_details("age")
     description = person_details("description")
     file = request.files["file"]
-    image = uploader(file)
+    image = person_details("image")
     gender = person_details("gender")
     person_type = person_details['type']
     user_id = get_jwt_identity()
