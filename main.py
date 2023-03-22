@@ -30,7 +30,7 @@ from models import Person
 from models import User
 
 from flask_jwt_extended import (
-    JWTManager, jwt_required, create_access_token,
+    JWTManager, jwt_required,
     get_jwt_identity
 )
 from auth import auth_app
@@ -209,17 +209,30 @@ def get_founded_persons():
     # return JSON response
     return persons_json
 
+@app.route('/api/users', methods=["GET"])
+def get_users():
+    users = session.query(User).all()
 
-@app.route("/api/persons", methods=["POST"])
-@jwt_required
+    # convert persons to JSON
+    users_json = json.dumps([{
+        'id': user.id,
+        'name': user.user_name,
+        # 'token': user.get_access_token(identity=user.id),
+    } for user in users])
+
+    # return JSON response
+    return users_json
+
+
+@app.route("/api/person", methods=["POST"])
+@jwt_required()
 def insert_person():
     person_details = request.get_json()
-    name = person_details("name")
-    age = person_details("age")
-    description = person_details("description")
-    file = request.files["file"]
-    image = uploader(file)
-    gender = person_details("gender")
+    name = person_details["name"]
+    age = person_details['age']
+    description = person_details['description']
+    image = person_details['image']
+    gender = person_details['gender']
     person_type = person_details['type']
     user_id = get_jwt_identity()
     new_person = Person(name=name, age=age, gender=gender, description=description,
@@ -232,9 +245,11 @@ def insert_person():
 
     # close the session
     session.close()
+    # person_dict = new_person.__dict__
+    # del person_dict['_sa_instance_state']
 
     # return the new person as a JSON response
-    return jsonify(new_person.__dict__)
+    return jsonify("Done!"),200
 
 
 # @app.route("/api/missing_persons/<id>", methods=["PUT"])
