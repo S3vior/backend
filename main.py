@@ -89,6 +89,7 @@ def scrap_img():
     return jsonify(res)
 
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -357,6 +358,29 @@ def similars():
                     return jsonify(found[0])
 
     return jsonify(json.dumps("not exited"))
+
+@app.route('/api/persons/search',methods=["GET"])
+def search_persons():
+    name = request.args.get('name')
+    if not name:
+        return jsonify({'error': 'Please provide a name parameter'}), 400
+
+    session = Session()
+    persons = session.query(Person).filter_by(name=name).all()
+    if not persons:
+        return jsonify({'error': 'Person not found'}), 404
+    session.close()
+    results = []
+    for person in persons:
+        results.append({
+            'id': person.id,
+            'name': person.name,
+            'age': person.age,
+            'gender': person.gender
+        })
+    return jsonify(results)
+
+
 
 
 if __name__ == "__main__":
