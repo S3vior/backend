@@ -1,0 +1,4 @@
+*.pyc
+__pycache__
+venv
+missing_persons.db
