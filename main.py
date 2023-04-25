@@ -26,17 +26,23 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 
 
-from models import Person
+from models import Person , Match
 from models import User
+from models import FaceEncoding
+from threading import Thread
 
 from flask_jwt_extended import (
     JWTManager, jwt_required,
     get_jwt_identity
 )
 from auth import auth_app
+from background_job import job_app
+
 app = Flask(__name__)
 
 app.register_blueprint(auth_app)
+app.register_blueprint(job_app)
+
 
 app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
 app.config['JWT_HEADER_NAME'] = 'token'
@@ -50,15 +56,72 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 
-def print_date_time():
-    print(time.strftime("%A, %d. %B %Y %I:%M:%S %p"))
+# @app.route("/api/similars")
+def similars():
+    session = Session()
+    missing_persons = session.query(Person).filter_by(type="missed").all()
+    finded_persons = session.query(Person).filter_by(type="founded").all()
 
 
-scheduler = BackgroundScheduler()
+    for missed in missing_persons:
+        # if x == person:
+        #     continue
+        response = urllib.request.urlopen(missed.image)
+        image = face_recognition.load_image_file(response)
+        p1 = face_recognition.face_encodings(image)
+        for found in finded_persons:
+            response2 = urllib.request.urlopen(found.image)
+            image2 = face_recognition.load_image_file(response2)
+            p2 = face_recognition.face_encodings(image2)
+            if len(p1) > 0:
+
+                match_results = face_recognition.compare_faces([p1[0]], p2[0])
+                if match_results[0] == True:
+                    match = Match( missed_person_id=missed.id, found_person_id=found.id)
+                    session = Session()
+                    session.add(match)
+                    session.commit()
+                    session.close()
+
+    return jsonify(json.dumps("No Matching Yet!"))
+
+# scheduler = BackgroundScheduler()
 # # Create the job
-# scheduler.add_job(func=print_date_time, trigger="interval", seconds=30)
+# scheduler.add_job(func=similars, trigger="interval", seconds=30)
 # # Start the scheduler
 # scheduler.start()
+
+
+@app.route('/matches', methods=['GET'])
+def get_matches():
+    session = Session()
+    matches = session.query(Match).all()
+    result = []
+    for match in matches:
+        missed_person = session.query(Person).filter_by(id=match.missed_person_id).first()
+        found_person = session.query(Person).filter_by(id=match.found_person_id).first()
+        result.append({
+            'missed_person': {
+                'id': missed_person.id,
+                'name': missed_person.name,
+                'age': missed_person.age,
+                'gender': missed_person.gender,
+                'description': missed_person.description,
+                'image': missed_person.image,
+                'type': missed_person.type
+            },
+            'found_person': {
+                'id': found_person.id,
+                'name': found_person.name,
+                'age': found_person.age,
+                'gender': found_person.gender,
+                'description': found_person.description,
+                'image': found_person.image,
+                'type': found_person.type
+            }
+        })
+    session.close()
+    return jsonify(result)
 
 cloudinary.config(
     cloud_name="khaledelabady11",
@@ -95,16 +158,6 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def detect_faces_in_image(person_id):
-    person = missing_person_controller.get_by_id(person_id)
-    response = urllib.request.urlopen(person[5])
-    image = face_recognition.load_image_file(response)
-    face_encodings = face_recognition.face_encodings(image)[0]
-    json_data = json.dumps(face_encodings.tolist())
-    result = faces_controller.insert_face(person_id, json_data)
-    return jsonify(result)
-
-
 # --------------------------------------------------------------------------------------------------------------
 # ENDPOINTS
 # --------------------------------------------------------------------------------------------------------------
@@ -124,7 +177,7 @@ def upload_image():
         person_type = request.form['type']
         user_id = request.form['user_id']
         new_person = Person(name=name, age=age, gender=gender, description=description,
-                            image=image, type=person_type, user_id=user_id)
+                            image=image, type=person_type, user_id=2)
 
     # create a session and add the new person to the database
         session = Session()
@@ -225,7 +278,7 @@ def get_users():
     return users_json
 
 
-@app.route("/api/person", methods=["POST"])
+@app.route("/api/persons", methods=["POST"])
 @jwt_required()
 def insert_person():
     person_details = request.get_json()
@@ -243,6 +296,12 @@ def insert_person():
     session = Session()
     session.add(new_person)
     session.commit()
+
+    encode_face(new_person.image ,new_person.id)
+
+      # Run the background task in a separate thread
+    # thread = Thread(target=job_app, args=(new_person,))
+    # thread.start()
 
     # close the session
     session.close()
@@ -305,59 +364,50 @@ def insert_person():
 #     return jsonify(face_list)
 
 @app.route("/api/missing_persons/<id>/similar")
-def find_similar(id):
-    persons = persons = session.query(Person).filter_by(type="founded")
-    person = session.query(Person).filter_by(id=id)
-    response = urllib.request.urlopen(person[4])
+def search_for_face(id):
+    person = session.query(Person).filter_by(id=id).first()
+
+    # Load the target image
+    response = urllib.request.urlopen(person.image)
+    target_image = face_recognition.load_image_file(response)
+
+    # Encode the target face
+    target_encodings = face_recognition.face_encodings(target_image)
+
+    # Check if there are any faces in the target image
+    if len(target_encodings) == 0:
+        return jsonify([])
+
+    # Query the database for all known faces
+    known_persons = session.query(Person).filter_by(type="founded").all()
+
+    # Encode all the known faces
+    known_encodings = [face_recognition.face_encodings(face_recognition.load_image_file(urllib.request.urlopen(person.image)))[0] for person in known_persons]
+
+    # Compare the target face to all the known faces
+    matches = face_recognition.compare_faces(known_encodings, target_encodings[0])
+
+    # Find the indices of all the matching faces
+    matching_indices = [i for i, match in enumerate(matches) if match]
+
+    # Get the ids of all the matching persons
+    matching_ids = [known_persons[i].id for i in matching_indices]
+    matching_ids.remove(person.id)
+
+    return jsonify(matching_ids)
+
+def encode_face(image_url,person_id):
+    response = urllib.request.urlopen(image_url)
     image = face_recognition.load_image_file(response)
-    p1 = face_recognition.face_encodings(image)
-    for x in persons:
-        response2 = urllib.request.urlopen(x[5])
-        image2 = face_recognition.load_image_file(response2)
-        p2 = face_recognition.face_encodings(image2)
-        res = []
-        if len(p1) > 0:
-            match_results = face_recognition.compare_faces([p1[0]], p2[0])
-            if match_results[0] == True:
-                res.append({"id": x[0],
-                            "name": x[1],
-                            "age": x[2],
-                            "description": x[3],
-                            "gender": x[4],
-                            "image": x[5],
-                            "created_at": x[6]})
-                return jsonify(res)
-    return jsonify(json.dumps("not exited yet!"))
+    encoding = face_recognition.face_encodings(image)[0]
 
+    # Create a new FaceEncoding object and save it to the database
+    face_encoding = FaceEncoding(person_id=person_id, encoding=encoding.tolist())
+    session.add(face_encoding)
+    session.commit()
 
+    return encoding
 
-
-@app.route("/api/similars")
-def similars():
-    missing_persons = found_persons_controller.get_persons()
-    finded_persons = missing_person_controller.get_persons()
-    # response = urllib.request.urlopen(person[5])
-    # image = face_recognition.load_image_file(response)
-    # p1= face_recognition.face_encodings(image)
-    for missed in missing_persons:
-        # if x == person:
-        #     continue
-        response = urllib.request.urlopen(missed[4])
-        image = face_recognition.load_image_file(response)
-        p1 = face_recognition.face_encodings(image)
-        for found in finded_persons:
-            response2 = urllib.request.urlopen(found[5])
-            image2 = face_recognition.load_image_file(response2)
-            p2 = face_recognition.face_encodings(image2)
-            if len(p1) > 0:
-
-                match_results = face_recognition.compare_faces([p1[0]], p2[0])
-                if match_results[0] == True:
-                 #   str = "May be the person with id = {}"
-                    found[8] = missed[0]
-                    return jsonify(found[0])
-
-    return jsonify(json.dumps("not exited"))
 
 @app.route('/api/persons/search',methods=["GET"])
 def search_persons():
