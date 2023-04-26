@@ -16,7 +16,7 @@ app = Flask(__name__)
 auth_app = Blueprint('auth', __name__)
 jwt = JWTManager(app)
 
-engine = create_engine('sqlite:///missing_persons.db', echo=True)
+engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
 
 # create a session
@@ -63,7 +63,7 @@ def login():
     if user and user.password == password:
         # generate an access token
         access_token = create_access_token(identity=user.id)
-        
+
         return jsonify({'access_token': access_token}), 200
     else:
         return jsonify({'message': 'Invalid user name or password'}), 401
