@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 job_app = Blueprint('job', __name__)
 
-engine = create_engine('sqlite:///missing_persons.db', echo=True)
+engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
 # create a session
 session = Session()

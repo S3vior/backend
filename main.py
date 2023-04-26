@@ -6,8 +6,8 @@ from flask import Flask, jsonify, request, redirect, render_template,  make_resp
 import face_recognition
 import json
 import cloudinary
-from cloudinary.uploader import upload
-from cloudinary.utils import cloudinary_url
+import cloudinary.uploader
+import cloudinary.api
 from PIL import Image
 import urllib.request
 import ast
@@ -30,6 +30,7 @@ from models import Person , Match
 from models import User
 from models import FaceEncoding
 from threading import Thread
+from datetime import timedelta
 
 from flask_jwt_extended import (
     JWTManager, jwt_required,
@@ -46,15 +47,22 @@ app.register_blueprint(job_app)
 
 app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
 app.config['JWT_HEADER_NAME'] = 'token'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=5)
+
 
 jwt = JWTManager(app)
 
-engine = create_engine('sqlite:///missing_persons.db', echo=True)
+engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
 
 # create a session
 session = Session()
 
+cloudinary.config(
+    cloud_name="khaledelabady11",
+    api_key="772589215762873",
+    api_secret="6EtKMojSfmrBn3t2UMH2wrAODCA"
+)
 
 # @app.route("/api/similars")
 def similars():
@@ -123,11 +131,7 @@ def get_matches():
     session.close()
     return jsonify(result)
 
-cloudinary.config(
-    cloud_name="khaledelabady11",
-    api_key="772589215762873",
-    api_secret="6EtKMojSfmrBn3t2UMH2wrAODCA"
-)
+
 
 
 def uploader(file):
@@ -276,76 +280,45 @@ def get_users():
 
     # return JSON response
     return users_json
-
-
-@app.route("/api/persons", methods=["POST"])
+@app.route('/api/persons', methods=['POST'])
 @jwt_required()
-def insert_person():
-    person_details = request.get_json()
-    name = person_details["name"]
+def create_person():
+    # get the person data from the request body
+    person_details = request.form
+    name = person_details['name']
     age = person_details['age']
     description = person_details['description']
-    image = person_details['image']
     gender = person_details['gender']
     person_type = person_details['type']
+
+    # check if required fields are present
+    if not all([name, age, gender, person_type]):
+        return jsonify({'message': 'Please provide all required fields.'}), 400
+
+    # upload the image to Cloudinary
+    image = request.files['image']
+    if not image:
+        return jsonify({'message': 'Please provide an image.'}), 400
+
+    uploaded_image = cloudinary.uploader.upload(image)
+    # create a Person record with the uploaded image
     user_id = get_jwt_identity()
     new_person = Person(name=name, age=age, gender=gender, description=description,
-                        image=image, type=person_type, user_id=user_id)
+                        type=person_type, image=uploaded_image["secure_url"], user_id=user_id)
 
     # create a session and add the new person to the database
     session = Session()
     session.add(new_person)
     session.commit()
+#      encode_face(new_person.image ,new_person.id)
 
-    encode_face(new_person.image ,new_person.id)
+#       # Run the background task in a separate thread
+#     # thread = Thread(target=job_app, args=(new_person,))
+#     # thread.start()
 
-      # Run the background task in a separate thread
-    # thread = Thread(target=job_app, args=(new_person,))
-    # thread.start()
-
-    # close the session
-    session.close()
-    # person_dict = new_person.__dict__
-    # del person_dict['_sa_instance_state']
-
-    # return the new person as a JSON response
-    return jsonify("Done!"),200
+    return jsonify({'message': 'Person created successfully'}), 201
 
 
-# @app.route("/api/missing_persons/<id>", methods=["PUT"])
-# def update_person(id):
-#     person_details = request.get_json()
-#     name = person_details["name"]
-#     message = person_details["message"]
-#     result = missing_person_controller.update_person(id, name, message)
-#     return jsonify(result)
-
-
-# @app.route("/api/persons/<id>", methods=["DELETE"])
-# def delete_person(id):
-#     result = missing_person_controller.delete_person(id)
-#     return jsonify(result)
-
-
-# @app.route("/api/missing_persons/<id>", methods=["GET"])
-# def get_person_by_id(id):
-#     person = missing_person_controller.get_by_id(id)
-#     json_str = {
-#         "id": person[0],
-#         "name": person[1],
-#         "age": person[2],
-#         "description": person[3],
-#         "gender": person[4],
-#         "image": person[5],
-#         "created_at": person[6]
-#     }
-#     return jsonify(json_str)
-
-
-# @app.route("/api/found_person/<id>", methods=["DELETE"])
-# def delete_founded_person(id):
-#     found_persons_controller.delete_person(id)
-#     return "true"
 
 
 # get Face_encodings
