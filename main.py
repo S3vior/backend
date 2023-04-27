@@ -338,24 +338,6 @@ def create_person():
 
     return jsonify({'message': 'Person created successfully'}), 201
 
-
-
-
-# get Face_encodings
-# @app.route('/api/faces', methods=["GET"])
-# def get_faces():
-#     faces = faces_controller.get_faces()
-#     face_list = []
-#     for face in faces:
-#         face_list.append(
-#             {
-#                 "person_id": face[0],
-#                 "data": face[1],
-#                 # "created_on": person["created_on"],
-#             }
-#         )
-#     return jsonify(face_list)
-
 @app.route('/api/persons/<int:person_id>/matches', methods=['GET'])
 def get_person_matches(person_id):
     # get a session and the person by id
