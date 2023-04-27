@@ -269,6 +269,23 @@ def get_founded_persons():
     return persons_json
 
 
+@app.route('/api/persons/<int:person_id>', methods=['DELETE'])
+def delete_person(person_id):
+    # get a session and the person by id
+    session = Session()
+    person = session.query(Person).filter_by(id=person_id).first()
+
+    if person:
+        # delete the person
+        session.delete(person)
+        session.commit()
+
+        # return success response
+        return jsonify({'message': f'Person with id {person_id} deleted successfully'}), 200
+    else:
+        # return error response if person not found
+        return jsonify({'error': f'Person with id {person_id} not found'}), 404
+
 @app.route('/api/users', methods=["GET"])
 def get_users():
     users = session.query(User).all()
