@@ -11,27 +11,6 @@ engine = create_engine('sqlite:///savior.db', echo=True)
 Base = declarative_base()
 
 # define the Person model
-# define the Attachment model
-# class Attachment(Base):
-#     __tablename__ = 'attachments'
-
-#     id = Column(Integer, primary_key=True)
-#     image_url = Column(String)
-#     created_at = Column(DateTime, default=datetime.now)
-
-#     # define the relationship with Person
-#     # person_id = Column(Integer, ForeignKey('persons.id'), unique=True)
-#     person = relationship("Person", back_populates="attachment")
-
-#     # define the relationship with UniquePerson
-#     # unique_person_id = Column(Integer, ForeignKey('unique_persons.id'), unique=True)
-#     # unique_person = relationship("UniquePerson", back_populates="attachment")
-
-#     def __repr__(self):
-#         return f"<Attachment(id={self.id}, image_url={self.image_url})>"
-
-
-# define the Person model
 class Person(Base):
     __tablename__ = 'persons'
 
@@ -42,6 +21,7 @@ class Person(Base):
     description = Column(String)
     image = Column(String)
     type = Column(String)
+    matched = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.now)
     face_encoding = relationship("FaceEncoding", uselist=False, back_populates="person")
 
@@ -54,7 +34,7 @@ class Person(Base):
     unique_person = relationship("UniquePerson", back_populates="person")
 
     def __repr__(self):
-        return f"<Person(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type})>"
+        return f"<Person(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type}, matched={self.matched})>"
 
 
 # define the UniquePerson model
@@ -71,9 +51,6 @@ class UniquePerson(Base):
     person_id = Column(Integer, ForeignKey('persons.id'))
     person = relationship("Person", back_populates="unique_person")
 
-    # define the relationship with Attachment
-    # attachment = relationship("Attachment", uselist=False, back_populates="unique_person")
-
     def __repr__(self):
         return f"<UniquePerson(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type}, person_id={self.person_id})>"
 
@@ -88,7 +65,6 @@ class User(Base):
     password = Column(String)
     fcm_token = Column(String)
     token = Column(String)
-
 
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")

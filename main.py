@@ -67,13 +67,13 @@ cloudinary.config(
 # @app.route("/api/similars")
 def similars():
     session = Session()
-    missing_persons = session.query(Person).filter_by(type="missed").all()
-    finded_persons = session.query(Person).filter_by(type="founded").all()
+    missing_persons = session.query(Person).filter_by(type="missed",matched=False).all()
+    finded_persons = session.query(Person).filter_by(type="founded",matched=False).all()
+    if not missing_persons and not finded_persons:
+       return jsonify(json.dumps("No More Matchings!"))
 
 
     for missed in missing_persons:
-        # if x == person:
-        #     continue
         response = urllib.request.urlopen(missed.image)
         image = face_recognition.load_image_file(response)
         p1 = face_recognition.face_encodings(image)
@@ -82,22 +82,23 @@ def similars():
             image2 = face_recognition.load_image_file(response2)
             p2 = face_recognition.face_encodings(image2)
             if len(p1) > 0:
-
                 match_results = face_recognition.compare_faces([p1[0]], p2[0])
-                if match_results[0] == True:
-                    match = Match( missed_person_id=missed.id, found_person_id=found.id)
-                    session = Session()
+                if match_results[0]:
+                    match = Match(missed_person_id=missed.id, found_person_id=found.id)
                     session.add(match)
+                    missed.matched = True  # set matched to True for the missed person
+                    found.matched = True   # set matched to True for the found person
                     session.commit()
                     session.close()
+                    return jsonify(json.dumps("Match Found!"))
 
     return jsonify(json.dumps("No Matching Yet!"))
 
-# scheduler = BackgroundScheduler()
-# # Create the job
-# scheduler.add_job(func=similars, trigger="interval", seconds=30)
-# # Start the scheduler
-# scheduler.start()
+scheduler = BackgroundScheduler()
+# Create the job
+scheduler.add_job(func=similars, trigger="interval", minutes=1)
+# Start the scheduler
+scheduler.start()
 
 
 @app.route('/matches', methods=['GET'])
@@ -267,6 +268,7 @@ def get_founded_persons():
     # return JSON response
     return persons_json
 
+
 @app.route('/api/users', methods=["GET"])
 def get_users():
     users = session.query(User).all()
@@ -290,6 +292,7 @@ def create_person():
     description = person_details['description']
     gender = person_details['gender']
     person_type = person_details['type']
+    # matched=person_details['matched']
 
     # check if required fields are present
     if not all([name, age, gender, person_type]):
@@ -336,38 +339,34 @@ def create_person():
 #         )
 #     return jsonify(face_list)
 
-@app.route("/api/missing_persons/<id>/similar")
-def search_for_face(id):
-    person = session.query(Person).filter_by(id=id).first()
+@app.route('/api/persons/<int:person_id>/matches', methods=['GET'])
+def get_person_matches(person_id):
+    # get a session and the person by id
+    session = Session()
+    person = session.query(Person).filter_by(id=person_id).first()
 
-    # Load the target image
-    response = urllib.request.urlopen(person.image)
-    target_image = face_recognition.load_image_file(response)
+    if person:
+        # get the matches for the person
+        matches = session.query(Match).filter_by(missed_person_id=person_id).all()
 
-    # Encode the target face
-    target_encodings = face_recognition.face_encodings(target_image)
+        # return a list of matched persons
+        matched_persons = []
+        for match in matches:
+            found_person = session.query(Person).filter_by(id=match.found_person_id).first()
 
-    # Check if there are any faces in the target image
-    if len(target_encodings) == 0:
-        return jsonify([])
+            persons_json = {
+                 'id': found_person.id,
+                 'name': found_person.name,
+                 'age': found_person.age,
+                 'gender': found_person.gender,
+                 'description': found_person.description,
+                 'image': found_person.image,
+                 'type': found_person.type,
+                 'created_at': found_person.created_at.isoformat(),
+            }
 
-    # Query the database for all known faces
-    known_persons = session.query(Person).filter_by(type="founded").all()
-
-    # Encode all the known faces
-    known_encodings = [face_recognition.face_encodings(face_recognition.load_image_file(urllib.request.urlopen(person.image)))[0] for person in known_persons]
-
-    # Compare the target face to all the known faces
-    matches = face_recognition.compare_faces(known_encodings, target_encodings[0])
-
-    # Find the indices of all the matching faces
-    matching_indices = [i for i, match in enumerate(matches) if match]
-
-    # Get the ids of all the matching persons
-    matching_ids = [known_persons[i].id for i in matching_indices]
-    matching_ids.remove(person.id)
-
-    return jsonify(matching_ids)
+    # return JSON response
+    return persons_json
 
 def encode_face(image_url,person_id):
     response = urllib.request.urlopen(image_url)

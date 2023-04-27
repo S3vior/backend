@@ -63,7 +63,7 @@ def login():
     if user and user.password == password:
         # generate an access token
         access_token = create_access_token(identity=user.id)
-
+        user.token=access_token
         return jsonify({'access_token': access_token}), 200
     else:
         return jsonify({'message': 'Invalid user name or password'}), 401
