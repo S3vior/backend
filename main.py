@@ -1,9 +1,16 @@
 """
     API REST con Python 3 y SQLite 3
 """
+from flask import jsonify, request
+from models import Contact
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_mail import Mail, Message
 from flask import Flask, jsonify, request, redirect, render_template,  make_response
 
-import face_recognition
+from flask_login import LoginManager, current_user
+
+from werkzeug.security import generate_password_hash, check_password_hash
+# import face_recognition
 import json
 import cloudinary
 import cloudinary.uploader
@@ -12,11 +19,15 @@ from PIL import Image
 import urllib.request
 import ast
 import numpy as np
-
+import hashlib
 import time
 import atexit
+import models
 
 from apscheduler.schedulers.background import BackgroundScheduler
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import requests
 from bs4 import BeautifulSoup
@@ -26,7 +37,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 
 
-from models import Person , Match
+from models import Person, Match
 from models import User
 from models import FaceEncoding
 from threading import Thread
@@ -65,11 +76,12 @@ cloudinary.config(
 )
 
 # @app.route("/api/similars")
+
+
 def similars():
     session = Session()
     missing_persons = session.query(Person).filter_by(type="missed").all()
     finded_persons = session.query(Person).filter_by(type="founded").all()
-
 
     for missed in missing_persons:
         # if x == person:
@@ -85,7 +97,8 @@ def similars():
 
                 match_results = face_recognition.compare_faces([p1[0]], p2[0])
                 if match_results[0] == True:
-                    match = Match( missed_person_id=missed.id, found_person_id=found.id)
+                    match = Match(missed_person_id=missed.id,
+                                  found_person_id=found.id)
                     session = Session()
                     session.add(match)
                     session.commit()
@@ -106,8 +119,10 @@ def get_matches():
     matches = session.query(Match).all()
     result = []
     for match in matches:
-        missed_person = session.query(Person).filter_by(id=match.missed_person_id).first()
-        found_person = session.query(Person).filter_by(id=match.found_person_id).first()
+        missed_person = session.query(Person).filter_by(
+            id=match.missed_person_id).first()
+        found_person = session.query(Person).filter_by(
+            id=match.found_person_id).first()
         result.append({
             'missed_person': {
                 'id': missed_person.id,
@@ -132,8 +147,6 @@ def get_matches():
     return jsonify(result)
 
 
-
-
 def uploader(file):
     result = cloudinary.uploader.upload(file)
     return result["secure_url"]
@@ -154,7 +167,6 @@ def scrap_img():
                     "image": ("https://atfalmafkoda.com"+item.img["src"]),
                     "date": (item.p.text)})
     return jsonify(res)
-
 
 
 def allowed_file(filename):
@@ -267,6 +279,7 @@ def get_founded_persons():
     # return JSON response
     return persons_json
 
+
 @app.route('/api/users', methods=["GET"])
 def get_users():
     users = session.query(User).all()
@@ -280,6 +293,8 @@ def get_users():
 
     # return JSON response
     return users_json
+
+
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
@@ -319,8 +334,6 @@ def create_person():
     return jsonify({'message': 'Person created successfully'}), 201
 
 
-
-
 # get Face_encodings
 # @app.route('/api/faces', methods=["GET"])
 # def get_faces():
@@ -355,10 +368,12 @@ def search_for_face(id):
     known_persons = session.query(Person).filter_by(type="founded").all()
 
     # Encode all the known faces
-    known_encodings = [face_recognition.face_encodings(face_recognition.load_image_file(urllib.request.urlopen(person.image)))[0] for person in known_persons]
+    known_encodings = [face_recognition.face_encodings(face_recognition.load_image_file(
+        urllib.request.urlopen(person.image)))[0] for person in known_persons]
 
     # Compare the target face to all the known faces
-    matches = face_recognition.compare_faces(known_encodings, target_encodings[0])
+    matches = face_recognition.compare_faces(
+        known_encodings, target_encodings[0])
 
     # Find the indices of all the matching faces
     matching_indices = [i for i, match in enumerate(matches) if match]
@@ -369,20 +384,22 @@ def search_for_face(id):
 
     return jsonify(matching_ids)
 
-def encode_face(image_url,person_id):
+
+def encode_face(image_url, person_id):
     response = urllib.request.urlopen(image_url)
     image = face_recognition.load_image_file(response)
     encoding = face_recognition.face_encodings(image)[0]
 
     # Create a new FaceEncoding object and save it to the database
-    face_encoding = FaceEncoding(person_id=person_id, encoding=encoding.tolist())
+    face_encoding = FaceEncoding(
+        person_id=person_id, encoding=encoding.tolist())
     session.add(face_encoding)
     session.commit()
 
     return encoding
 
 
-@app.route('/api/persons/search',methods=["GET"])
+@app.route('/api/persons/search', methods=["GET"])
 def search_persons():
     name = request.args.get('name')
     if not name:
@@ -403,7 +420,55 @@ def search_persons():
         })
     return jsonify(results)
 
+# --------------------------------change passward--------------------------------------------
 
+
+@app.route('/change_password', methods=['POST'])
+@jwt_required()  # Requires authentication with a JWT token
+def change_password():
+    current_user = get_jwt_identity()  # Get the current user from the token
+    # Query the database for the user
+    user = User.query.filter_by(id=current_user['id']).first()
+
+    # Get the old password, new password, and confirmation of new password from the request body
+    old_password = request.json.get('old_password')
+    new_password = request.json.get('new_password')
+    confirm_password = request.json.get('confirm_password')
+
+    # Check if the old password is correct
+    if not check_password_hash(user.password, old_password):
+        return jsonify({'message': 'Old password is incorrect.'}), 400
+
+    # Check if the new password and confirmation match
+    if new_password != confirm_password:
+        return jsonify({'message': 'New password and confirmation do not match.'}), 400
+# ----------------------------------------------------------------------------
+
+
+# -------------------------------contact us---------------------------------------------
+
+
+@app.route('/contact_us', methods=['POST'])
+@jwt_required()  # Requires authentication with a JWT token
+def contact_us():
+    current_user = get_jwt_identity()  # Get the current user from the token
+
+    # Get the name, email, and problem from the request body
+    name = request.json.get('name')
+    email = request.json.get('email')
+    problem = request.json.get('problem')
+
+    # Create a new Contact object with the user's ID and the provided name, email, and problem
+    contact = Contact(
+        user_id=current_user, name=name, email=email, problem=problem)
+
+    # Add the new Contact object to the database
+    session.add(contact)
+    session.commit()
+
+    # Return a success message
+    return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
+# ----------------------------------------------------------------------------
 
 
 if __name__ == "__main__":

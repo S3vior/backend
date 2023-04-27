@@ -3,7 +3,6 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSON
-
 # create the engine
 engine = create_engine('sqlite:///savior.db', echo=True)
 
@@ -43,13 +42,12 @@ class Person(Base):
     image = Column(String)
     type = Column(String)
     created_at = Column(DateTime, default=datetime.now)
-    face_encoding = relationship("FaceEncoding", uselist=False, back_populates="person")
-
+    face_encoding = relationship(
+        "FaceEncoding", uselist=False, back_populates="person")
 
     # define the relationship with User
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship("User", back_populates="persons")
-
 
     unique_person = relationship("UniquePerson", back_populates="person")
 
@@ -89,12 +87,28 @@ class User(Base):
     fcm_token = Column(String)
     token = Column(String)
 
-
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")
+    contacts = relationship('Contact', backref='user')
 
     def __repr__(self):
         return f"<User(id={self.id}, user_name={self.user_name}, phone_number={self.phone_number})>"
+
+
+class Contact(Base):
+    __tablename__ = 'contact_us'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    email = Column(String)
+    problem = Column(String)
+
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    user = relationship('User', back_populates='contacts')
+
+    def __repr__(self):
+        return f'<Contact {self.id}>'
 
 
 class FaceEncoding(Base):
@@ -109,6 +123,7 @@ class FaceEncoding(Base):
     def __repr__(self):
         return f"<FaceEncoding(person_id={self.person_id})>"
 
+
 class Match(Base):
     __tablename__ = 'matches'
     id = Column(Integer, primary_key=True)
@@ -116,6 +131,7 @@ class Match(Base):
     found_person_id = Column(Integer, ForeignKey('persons.id'))
     missed_person = relationship("Person", foreign_keys=[missed_person_id])
     found_person = relationship("Person", foreign_keys=[found_person_id])
+
     # def __repr__(self):
     #     return f"Match(id={self.id}, missed_person={self.missed_person}, found_person={self.found_person})"
 # # create the tables

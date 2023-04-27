@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request, redirect, render_template,  make_response ,Blueprint
+from flask import Flask, jsonify, request, redirect, render_template,  make_response, Blueprint
 
-import face_recognition
+# import face_recognition
 import json
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 # from firebase_admin import credentials, messaging
 
 
-from models import Person ,UniquePerson ,User
+from models import Person, UniquePerson, User
 
 from threading import Thread
 
@@ -27,13 +27,16 @@ session = Session()
 # firebase_admin.initialize_app(cred)
 
 # Function to send a notification to a user
+
+
 def send_notification(user_id, message):
     # Get the user's FCM token from the database
     user = User.query.get(user_id)
     token = user.fcm_token
 
     # Create a message with the notification content
-    notification = messaging.Notification(title='New person added', body=message)
+    notification = messaging.Notification(
+        title='New person added', body=message)
 
     # Send the notification to the user's device
     message = messaging.Message(notification=notification, token=token)
@@ -41,18 +44,23 @@ def send_notification(user_id, message):
 
     return response
 
+
 def background_task(new_person):
     # Load all the saved person images from the database
     saved_persons = session.query(Person).filter_by(id != new_person.id).all()
-    saved_person_encodings = [face_recognition.load_image_file(p.image) for p in saved_persons]
-    saved_person_encodings = [face_recognition.face_encodings(img)[0] for img in saved_person_encodings]
+    saved_person_encodings = [
+        face_recognition.load_image_file(p.image) for p in saved_persons]
+    saved_person_encodings = [face_recognition.face_encodings(
+        img)[0] for img in saved_person_encodings]
 
     # Encode the image of the new person
     new_person_encoding = face_recognition.load_image_file(new_person.image)
-    new_person_encoding = face_recognition.face_encodings(new_person_encoding)[0]
+    new_person_encoding = face_recognition.face_encodings(new_person_encoding)[
+        0]
 
     # Compare the new person encoding with saved person encodings
-    matches = face_recognition.compare_faces(saved_person_encodings, new_person_encoding)
+    matches = face_recognition.compare_faces(
+        saved_person_encodings, new_person_encoding)
 
     # If a match is found, notify the user
     if any(matches):
