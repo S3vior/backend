@@ -26,9 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 
 
-from models import Person , Match
-from models import User
-from models import FaceEncoding
+from models import Person,Match,Contact,User,FaceEncoding
 from threading import Thread
 from datetime import timedelta
 
@@ -64,7 +62,6 @@ cloudinary.config(
     api_secret="6EtKMojSfmrBn3t2UMH2wrAODCA"
 )
 
-# @app.route("/api/similars")
 def similars():
     session = Session()
     missing_persons = session.query(Person).filter_by(type="missed",matched=False).all()
@@ -101,7 +98,7 @@ scheduler.add_job(func=similars, trigger="interval", minutes=1)
 scheduler.start()
 
 
-@app.route('/matches', methods=['GET'])
+@app.route('/api/matches', methods=['GET'])
 def get_matches():
     session = Session()
     matches = session.query(Match).all()
@@ -402,6 +399,26 @@ def search_persons():
     return jsonify(results)
 
 
+@app.route('/api/contact_us', methods=['POST'])
+@jwt_required()  # Requires authentication with a JWT token
+def contact_us():
+    current_user_id = get_jwt_identity()  # Get the current user from the token
+
+    # Get the name, email, and problem from the request body
+    name = request.json.get('name')
+    email = request.json.get('email')
+    problem = request.json.get('problem')
+
+    # Create a new Contact object with the user's ID and the provided name, email, and problem
+    contact = Contact(
+         name=name, email=email, problem=problem,user_id=current_user_id)
+
+    # Add the new Contact object to the database
+    session.add(contact)
+    session.commit()
+
+    # Return a success message
+    return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
 
 if __name__ == "__main__":

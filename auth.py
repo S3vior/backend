@@ -68,6 +68,38 @@ def login():
     else:
         return jsonify({'message': 'Invalid user name or password'}), 401
 
+
+
+# --------------------------------change passward--------------------------------------------
+
+
+@auth_app.route('/api/change_password', methods=['POST'])
+@jwt_required()  # Requires authentication with a JWT token
+def change_password():
+    current_user_id = get_jwt_identity()  # Get the current user from the token
+    # Query the database for the user
+    user = session.query(User).filter_by(id=current_user_id).first()
+
+    # Get the old password, new password, and confirmation of new password from the request body
+    old_password = request.json.get('old_password')
+    new_password = request.json.get('new_password')
+    confirm_password = request.json.get('confirm_password')
+
+    # Check if the old password is correct
+    if  user.password != old_password:
+        return jsonify({'message': 'Old password is incorrect.'}), 400
+
+    # Check if the new password and confirmation match
+    if new_password != confirm_password:
+        return jsonify({'message': 'New password and confirmation do not match.'}), 400
+
+    user.password = new_password
+    session.commit()
+
+    return jsonify({'message': 'Password updated successfully.'}), 200
+# ----------------------------------------------------------------------------
+
+
 @auth_app.route('/api/profile', methods=['GET'])
 @jwt_required()
 def get_user():
