@@ -69,8 +69,27 @@ class User(Base):
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")
 
+    contacts = relationship("Contact", back_populates="user")
+
+
     def __repr__(self):
         return f"<User(id={self.id}, user_name={self.user_name}, phone_number={self.phone_number})>"
+
+
+class Contact(Base):
+    __tablename__ = 'contact_us'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    email = Column(String)
+    problem = Column(String)
+
+    user_id = Column(Integer, ForeignKey('users.id'))
+    user = relationship("User", back_populates="contacts")
+
+
+    def __repr__(self):
+        return f'<Contact {self.id}>'
 
 
 class FaceEncoding(Base):
