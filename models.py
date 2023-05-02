@@ -1,5 +1,6 @@
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey , Float
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSON
@@ -16,7 +17,7 @@ class Person(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    age = Column(Integer)
+    age = Column(String)
     gender = Column(String)
     description = Column(String)
     image = Column(String)
@@ -32,6 +33,8 @@ class Person(Base):
 
 
     unique_person = relationship("UniquePerson", back_populates="person")
+
+    location = relationship("Location", uselist=False, back_populates="person")
 
     def __repr__(self):
         return f"<Person(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type}, matched={self.matched})>"
@@ -113,5 +116,17 @@ class Match(Base):
     found_person = relationship("Person", foreign_keys=[found_person_id])
     # def __repr__(self):
     #     return f"Match(id={self.id}, missed_person={self.missed_person}, found_person={self.found_person})"
+
+class Location(Base):
+    __tablename__ = 'locations'
+
+    id = Column(Integer, primary_key=True)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    person_id = Column(Integer, ForeignKey('persons.id'))
+    person = relationship("Person", back_populates="location")
+
+    def __repr__(self):
+        return f"<Location(id={self.id}, latitude={self.latitude}, longitude={self.longitude})>"
 # # create the tables
 Base.metadata.create_all(engine)
