@@ -26,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 
 
-from models import Person,Match,Contact,User,FaceEncoding
+from models import Person,Match,Contact,User,FaceEncoding ,Location
 from threading import Thread
 from datetime import timedelta
 
@@ -91,11 +91,11 @@ def similars():
 
     return jsonify(json.dumps("No Matching Yet!"))
 
-scheduler = BackgroundScheduler()
-# Create the job
-scheduler.add_job(func=similars, trigger="interval", minutes=1)
-# Start the scheduler
-scheduler.start()
+# scheduler = BackgroundScheduler()
+# # Create the job
+# scheduler.add_job(func=similars, trigger="interval", minutes=1)
+# # Start the scheduler
+# scheduler.start()
 
 
 @app.route('/api/matches', methods=['GET'])
@@ -205,10 +205,9 @@ def list_persons():
 # API-ENDPOINTS
 # --------------------------------------------------------------------------------------------------------------
 
-
 @app.route('/api/persons', methods=["GET"])
 def get_persons():
-    persons = session.query(Person).all()
+    persons =session.query(Person).join(Location).all()
 
     # convert persons to JSON
     persons_json = json.dumps([{
@@ -219,8 +218,13 @@ def get_persons():
         'description': person.description,
         'image': person.image,
         'type': person.type,
+        'location': {
+            'latitude': person.location.latitude,
+            'longitude': person.location.longitude,
+        },
         'created_at': person.created_at.isoformat(),
-    } for person in persons])
+    }
+    for person in persons])
 
     # return JSON response
     return persons_json
@@ -296,6 +300,7 @@ def get_users():
 
     # return JSON response
     return users_json
+
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
@@ -306,7 +311,8 @@ def create_person():
     description = person_details['description']
     gender = person_details['gender']
     person_type = person_details['type']
-    # matched=person_details['matched']
+    latitude = float(person_details['latitude']) # convert to float
+    longitude = float(person_details['longitude']) # convert to float
 
     # check if required fields are present
     if not all([name, age, gender, person_type]):
@@ -326,6 +332,11 @@ def create_person():
     # create a session and add the new person to the database
     session = Session()
     session.add(new_person)
+    session.commit()
+
+      # create a new PersonLocation record and associate it with the newly created Person
+    new_person_location = Location(latitude=latitude, longitude=longitude, person_id=new_person.id)
+    session.add(new_person_location)
     session.commit()
 #      encode_face(new_person.image ,new_person.id)
 
