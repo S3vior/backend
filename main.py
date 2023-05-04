@@ -270,7 +270,7 @@ def get_founded_persons():
     return persons_json
 
 
-@app.route('/api/persons/<int:person_id>', methods=['DELETE'])
+@app.route('/persons/<int:person_id>', methods=['DELETE'])
 def delete_person(person_id):
     # get a session and the person by id
     session = Session()
