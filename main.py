@@ -39,6 +39,11 @@ from background_job import job_app
 
 app = Flask(__name__)
 
+scheduler = BackgroundScheduler()
+     # Create the job
+     # Start the scheduler
+scheduler.start()
+
 app.register_blueprint(auth_app)
 app.register_blueprint(job_app)
 
@@ -69,7 +74,6 @@ def similars():
     if not missing_persons and not finded_persons:
        return jsonify(json.dumps("No More Matchings!"))
 
-
     for missed in missing_persons:
         response = urllib.request.urlopen(missed.image)
         image = face_recognition.load_image_file(response)
@@ -91,11 +95,12 @@ def similars():
 
     return jsonify(json.dumps("No Matching Yet!"))
 
-# scheduler = BackgroundScheduler()
-# # Create the job
-# scheduler.add_job(func=similars, trigger="interval", minutes=1)
-# # Start the scheduler
-# scheduler.start()
+
+def find_similar():
+    with app.app_context():
+        similars()
+
+scheduler.add_job(func=find_similar, trigger="interval", hours=12)
 
 
 @app.route('/api/matches', methods=['GET'])
