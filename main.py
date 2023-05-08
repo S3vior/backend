@@ -24,6 +24,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
+import arrow
 
 
 from models import Person,Match,Contact,User,FaceEncoding ,Location
@@ -124,7 +125,8 @@ def get_matches():
                'latitude': missed_person.location.latitude,
                'longitude': missed_person.location.longitude,
                },
-               'created_at': missed_person.created_at.isoformat()},
+
+               'created_at': arrow.get(missed_person.created_at).humanize(locale='ar')},
 
             'found_person': {
                 'id': found_person.id,
@@ -138,7 +140,7 @@ def get_matches():
                'latitude': found_person.location.latitude,
                'longitude': found_person.location.longitude,
                },
-               'created_at': found_person.created_at.isoformat()},
+               'created_at': arrow.get(found_person.created_at).humanize(locale='ar')},
 
         })
     session.close()
@@ -237,7 +239,7 @@ def get_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
-        'created_at': person.created_at.isoformat(),
+        'created_at': arrow.get(person.created_at).humanize(locale='ar'),
     }
     for person in persons])
 
@@ -258,7 +260,11 @@ def get_missing_persons():
         'description': person.description,
         'image': person.image,
         'type': person.type,
-        'created_at': person.created_at.isoformat(),
+        'location': {
+            'latitude': person.location.latitude,
+            'longitude': person.location.longitude,
+         },
+         'created_at': arrow.get(person.created_at).humanize(locale='ar'),
     } for person in persons])
 
     # return JSON response
@@ -278,7 +284,11 @@ def get_founded_persons():
         'description': person.description,
         'image': person.image,
         'type': person.type,
-        'created_at': person.created_at.isoformat(),
+        'location': {
+            'latitude': person.location.latitude,
+            'longitude': person.location.longitude,
+        },
+        'created_at': arrow.get(person.created_at).humanize(locale='ar'),
     } for person in persons])
 
     # return JSON response
