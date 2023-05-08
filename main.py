@@ -119,8 +119,13 @@ def get_matches():
                 'gender': missed_person.gender,
                 'description': missed_person.description,
                 'image': missed_person.image,
-                'type': missed_person.type
-            },
+                'type': missed_person.type,
+                'location': {
+               'latitude': missed_person.location.latitude,
+               'longitude': missed_person.location.longitude,
+               },
+               'created_at': missed_person.created_at.isoformat()},
+
             'found_person': {
                 'id': found_person.id,
                 'name': found_person.name,
@@ -128,8 +133,13 @@ def get_matches():
                 'gender': found_person.gender,
                 'description': found_person.description,
                 'image': found_person.image,
-                'type': found_person.type
-            }
+                'type': found_person.type,
+                'location': {
+               'latitude': found_person.location.latitude,
+               'longitude': found_person.location.longitude,
+               },
+               'created_at': found_person.created_at.isoformat()},
+
         })
     session.close()
     return jsonify(result)
