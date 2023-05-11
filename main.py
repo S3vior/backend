@@ -126,7 +126,7 @@ def get_matches():
                'longitude': missed_person.location.longitude,
                },
 
-               'created_at': arrow.get(missed_person.created_at).humanize(locale='ar')},
+                       'created_at': missed_person.created_at.isoformat()},
 
             'found_person': {
                 'id': found_person.id,
@@ -140,7 +140,7 @@ def get_matches():
                'latitude': found_person.location.latitude,
                'longitude': found_person.location.longitude,
                },
-               'created_at': arrow.get(found_person.created_at).humanize(locale='ar')},
+        'created_at': found_person.created_at.isoformat()},
 
         })
     session.close()
@@ -239,7 +239,7 @@ def get_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
-        'created_at': arrow.get(person.created_at).humanize(locale='ar'),
+        'created_at': person.created_at.isoformat()
     }
     for person in persons])
 
@@ -264,7 +264,7 @@ def get_missing_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
          },
-         'created_at': arrow.get(person.created_at).humanize(locale='ar'),
+        'created_at': person.created_at.isoformat()
     } for person in persons])
 
     # return JSON response
@@ -288,8 +288,8 @@ def get_founded_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
-        'created_at': arrow.get(person.created_at).humanize(locale='ar'),
-    } for person in persons])
+        'created_at': person.created_at.isoformat()
+        } for person in persons])
 
     # return JSON response
     return persons_json
