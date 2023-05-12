@@ -24,7 +24,6 @@ from bs4 import BeautifulSoup
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
-import arrow
 
 
 from models import Person,Match,Contact,User,FaceEncoding ,Location
@@ -399,6 +398,33 @@ def get_person_matches(person_id):
 
     # return JSON response
     return persons_json
+
+@app.route('/api/persons/<int:person_id>', methods=['GET'])
+def get_person(person_id):
+    # Retrieve the person from the database based on the provided ID
+    person = session.query(Person).filter_by(id=person_id).first()
+
+    if person is None:
+        # Return a 404 Not Found error if the person does not exist
+        return jsonify({'error': 'Person not found'}), 404
+
+    # Return the person's information as a JSON response
+    return jsonify({
+        'id': person.id,
+        'name': person.name,
+        'age': person.age,
+        'gender': person.gender,
+        'description': person.description,
+        'image': person.image,
+        'type': person.type,
+        'location': {
+            'latitude': person.location.latitude,
+            'longitude': person.location.longitude,
+        },
+        'created_at': person.created_at
+        # Add any other fields you want to include
+    })
+
 
 def encode_face(image_url,person_id):
     response = urllib.request.urlopen(image_url)
