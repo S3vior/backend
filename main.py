@@ -36,7 +36,7 @@ from flask_jwt_extended import (
 )
 from auth import auth_app
 from background_job import job_app
-
+from geopy.geocoders import Nominatim
 app = Flask(__name__)
 
 scheduler = BackgroundScheduler()
@@ -100,7 +100,7 @@ def find_similar():
     with app.app_context():
         similars()
 
-scheduler.add_job(func=find_similar, trigger="interval", hours=12)
+scheduler.add_job(func=find_similar, trigger="interval", hours=2)
 
 
 @app.route('/api/matches', methods=['GET'])
@@ -112,6 +112,7 @@ def get_matches():
         missed_person = session.query(Person).filter_by(id=match.missed_person_id).first()
         found_person = session.query(Person).filter_by(id=match.found_person_id).first()
         result.append({
+            'id':match.id,
             'missed_person': {
                 'id': missed_person.id,
                 'name': missed_person.name,
@@ -121,11 +122,12 @@ def get_matches():
                 'image': missed_person.image,
                 'type': missed_person.type,
                 'location': {
+                'address':missed_person.location.address,
                'latitude': missed_person.location.latitude,
                'longitude': missed_person.location.longitude,
                },
-
-                       'created_at': missed_person.created_at.isoformat()},
+             "user_name":missed_person.user.user_name,
+             'created_at': missed_person.created_at.isoformat()},
 
             'found_person': {
                 'id': found_person.id,
@@ -136,9 +138,12 @@ def get_matches():
                 'image': found_person.image,
                 'type': found_person.type,
                 'location': {
+                'address':found_person.location.address,
                'latitude': found_person.location.latitude,
                'longitude': found_person.location.longitude,
                },
+               "user_name":found_person.user.user_name,
+
         'created_at': found_person.created_at.isoformat()},
 
         })
@@ -235,6 +240,7 @@ def get_persons():
         'image': person.image,
         'type': person.type,
         'location': {
+            'address':person.location.address,
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
@@ -248,7 +254,7 @@ def get_persons():
 
 @app.route('/api/missing_persons', methods=["GET"])
 def get_missing_persons():
-    persons = session.query(Person).filter_by(type="missing")
+    persons = session.query(Person).filter_by(type="missed")
 
     # convert persons to JSON
     persons_json = json.dumps([{
@@ -260,6 +266,7 @@ def get_missing_persons():
         'image': person.image,
         'type': person.type,
         'location': {
+            'address':person.location.address,
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
          },
@@ -284,6 +291,7 @@ def get_founded_persons():
         'image': person.image,
         'type': person.type,
         'location': {
+            'address':person.location.address,
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
@@ -325,6 +333,16 @@ def get_users():
     # return JSON response
     return users_json
 
+
+def get_address(latitude, longitude):
+    geolocator = Nominatim(user_agent="savior")
+    location = geolocator.reverse((latitude, longitude), exactly_one=True)
+    if location is not None:
+        return location.address
+    else:
+        return None
+
+
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
@@ -359,7 +377,8 @@ def create_person():
     session.commit()
 
       # create a new PersonLocation record and associate it with the newly created Person
-    new_person_location = Location(latitude=latitude, longitude=longitude, person_id=new_person.id)
+    address = get_address(latitude, longitude)
+    new_person_location = Location(latitude=latitude, longitude=longitude,address=address, person_id=new_person.id)
     session.add(new_person_location)
     session.commit()
 #      encode_face(new_person.image ,new_person.id)
