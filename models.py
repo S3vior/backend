@@ -123,6 +123,7 @@ class Location(Base):
     id = Column(Integer, primary_key=True)
     latitude = Column(Float)
     longitude = Column(Float)
+    address = Column(String)
     person_id = Column(Integer, ForeignKey('persons.id'))
     person = relationship("Person", back_populates="location")
 
