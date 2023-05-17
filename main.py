@@ -421,6 +421,7 @@ def get_person(person_id):
         'image': person.image,
         'type': person.type,
         'location': {
+            'address':person.location.address,
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
