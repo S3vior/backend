@@ -100,7 +100,7 @@ def find_similar():
     with app.app_context():
         similars()
 
-scheduler.add_job(func=find_similar, trigger="interval", hours=2)
+scheduler.add_job(func=find_similar, trigger="interval", hours=3)
 
 
 @app.route('/api/matches', methods=['GET'])
@@ -319,21 +319,6 @@ def delete_person(person_id):
         # return error response if person not found
         return jsonify({'error': f'Person with id {person_id} not found'}), 404
 
-@app.route('/api/users', methods=["GET"])
-def get_users():
-    users = session.query(User).all()
-
-    # convert persons to JSON
-    users_json = json.dumps([{
-        'id': user.id,
-        'name': user.user_name,
-        # 'token': user.get_access_token(identity=user.id),
-    } for user in users])
-
-    # return JSON response
-    return users_json
-
-
 def get_address(latitude, longitude):
     geolocator = Nominatim(user_agent="savior")
     location = geolocator.reverse((latitude, longitude), exactly_one=True)
@@ -381,8 +366,7 @@ def create_person():
     new_person_location = Location(latitude=latitude, longitude=longitude,address=address, person_id=new_person.id)
     session.add(new_person_location)
     session.commit()
-#      encode_face(new_person.image ,new_person.id)
-
+    save_face_encodings(new_person.image,new_person)
 #       # Run the background task in a separate thread
 #     # thread = Thread(target=job_app, args=(new_person,))
 #     # thread.start()
@@ -445,18 +429,30 @@ def get_person(person_id):
     })
 
 
-def encode_face(image_url,person_id):
-    response = urllib.request.urlopen(image_url)
-    image = face_recognition.load_image_file(response)
-    encoding = face_recognition.face_encodings(image)[0]
+# def encode_face(image_url,person_id):
+#     response = urllib.request.urlopen(image_url)
+#     image = face_recognition.load_image_file(response)
+#     encoding = face_recognition.face_encodings(image)[0]
 
-    # Create a new FaceEncoding object and save it to the database
-    face_encoding = FaceEncoding(person_id=person_id, encoding=encoding.tolist())
+#     # Create a new FaceEncoding object and save it to the database
+#     face_encoding = FaceEncoding(person_id=person_id, encoding=encoding.tolist())
+#     session.add(face_encoding)
+#     session.commit()
+
+#     return encoding
+
+def save_face_encodings(person_image, person):
+    # Load the image and find all faces in it
+    response = urllib.request.urlopen(person_image)
+    image = face_recognition.load_image_file(response)
+    # face_locations = face_recognition.face_locations(image)
+    face_encoding = face_recognition.face_encodings(image)[0]
+    person = session.merge(person)  # Detach the person object from its current session
+    # Save the face encodings to the database
+    face_encoding = FaceEncoding(person=person)
+    face_encoding.set_encoding(face_encoding)
     session.add(face_encoding)
     session.commit()
-
-    return encoding
-
 
 @app.route('/api/persons/search',methods=["GET"])
 def search_persons():
@@ -501,6 +497,64 @@ def contact_us():
     # Return a success message
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
+
+# @app.route('/search_person', methods=['POST'])
+# def search_person():
+#     # Get the image file from the request
+#     image_file = request.files['image']
+
+#     # Load the image and extract the face encodings
+#     image = face_recognition.load_image_file(image_file)
+#     encodings = face_recognition.face_encodings(image)
+
+#     # Retrieve all face encodings from the database
+#     face_encodings = session.query(FaceEncoding).all()
+
+#     # Initialize the result
+#     result = None
+
+#     # Iterate through the face encodings in the database
+#     for face_encoding in face_encodings:
+#         # Convert the encoding to a numpy array
+#         encoding = face_encoding.get_encoding()
+
+#         # Compare the face encodings
+#         matches = face_recognition.compare_faces([encoding], encodings[0])
+#         if matches[0]:
+#             # If a match is found, set the result and break the loop
+#             result = face_encoding.person
+#             break
+
+#     if result:
+#         # If a person is found, return their details
+#         return jsonify({
+#             'person_id': result.id,
+#             'name': result.name,
+#             'age': result.age
+#         })
+#     else:
+#         # If no person is found, return an appropriate response
+#         return jsonify({'message': 'Person not found'})
+
+# @app.route('/encode')
+# def save_all_face_encodings():
+#     # Get the request data
+#     persons=session.query(Person).all()
+
+#     # Iterate over all persons
+#     for person in persons:
+#         # Load the image and find all faces in it
+#         save_face_encodings(person.image,person)
+
+
+#     return "Face encodings saved successfully"
+
+
+# @app.route('/deleteall')
+# def save_all_face_encodings():
+#     # Get the request data
+#     f =session.query(FaceEncoding).all()
+#     return f
 
 if __name__ == "__main__":
     """
