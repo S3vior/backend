@@ -1,9 +1,11 @@
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey , Float
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey , Float ,LargeBinary
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSON
+import numpy as np
+
 
 # create the engine
 engine = create_engine('sqlite:///savior.db', echo=True)
@@ -95,14 +97,21 @@ class Contact(Base):
         return f'<Contact {self.id}>'
 
 
+
 class FaceEncoding(Base):
     __tablename__ = 'face_encodings'
 
     id = Column(Integer, primary_key=True)
     person_id = Column(Integer, ForeignKey('persons.id'))
-    encoding = Column(JSON)
+    encoding = Column(LargeBinary)
 
     person = relationship("Person", back_populates="face_encoding")
+
+    def set_encoding(self, encoding):
+        self.encoding = np.array(encoding).tobytes()
+
+    def get_encoding(self):
+        return np.frombuffer(self.encoding)
 
     def __repr__(self):
         return f"<FaceEncoding(person_id={self.person_id})>"

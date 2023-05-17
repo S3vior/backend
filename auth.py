@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, redirect, render_template,  make_resp
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
-
+import json
 from models import User
 
 from flask_jwt_extended import (
@@ -117,3 +117,19 @@ def get_user():
         'user_name': user.user_name,
         'phone_number': user.phone_number,
     }), 200
+
+@auth_app.route('/api/users', methods=["GET"])
+def get_users():
+    users = session.query(User).all()
+
+    # convert persons to JSON
+    users_json = json.dumps([{
+        'id': user.id,
+        'name': user.user_name,
+        'phone_number':user.phone_number
+        # 'token': user.get_access_token(identity=user.id),
+    } for user in users])
+
+    # return JSON response
+    return users_json
+
