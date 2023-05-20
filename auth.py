@@ -6,7 +6,7 @@ import json
 from models import User
 
 from flask_jwt_extended import (
-    JWTManager, jwt_required, create_access_token,
+    JWTManager, jwt_required, create_access_token,get_jwt,unset_jwt_cookies,
     get_jwt_identity
 )
 
@@ -16,6 +16,8 @@ app = Flask(__name__)
 auth_app = Blueprint('auth', __name__)
 jwt = JWTManager(app)
 
+# Create a blacklist to store revoked tokens
+blacklist = set()
 engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
 
@@ -62,7 +64,7 @@ def login():
     # check if the user exists and the password matches
     if user and user.password == password:
         # generate an access token
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=user.id, additional_claims={'logged_out': False})
         user.token=access_token
         return jsonify({'access_token': access_token}), 200
     else:
@@ -100,16 +102,15 @@ def change_password():
 # ----------------------------------------------------------------------------
 
 
-@auth_app.route('/api/profile', methods=['GET'])
-@jwt_required()
-def get_user():
-    # get the user id from the access token
-    user_id = get_jwt_identity()
-
+@auth_app.route('/api/users/<int:user_id>/profile', methods=['GET'])
+def get_user_profile(user_id):
     # query the user from the database
     session = Session()
     user = session.query(User).get(user_id)
     session.close()
+
+    if user is None:
+        return jsonify({'message': 'User not found'}), 404
 
     # return the user data
     return jsonify({
@@ -117,7 +118,6 @@ def get_user():
         'user_name': user.user_name,
         'phone_number': user.phone_number,
     }), 200
-
 @auth_app.route('/api/users', methods=["GET"])
 def get_users():
     users = session.query(User).all()
@@ -133,3 +133,19 @@ def get_users():
     # return JSON response
     return users_json
 
+
+@jwt.expired_token_loader
+def handle_expired_token_callback():
+    # Check the custom claim to determine if the user logged out
+    logged_out = get_jwt()['logged_out']
+    if logged_out:
+        return jsonify({'message': 'Token expired after logout'}), 401
+    else:
+        return jsonify({'message': 'Token has expired'}), 401
+
+@auth_app.route('/api/auth/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    # Revoke the current user's token
+    unset_jwt_cookies()
+    return jsonify({'message': 'Successfully logged out'}), 200

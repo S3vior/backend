@@ -23,12 +23,13 @@ from bs4 import BeautifulSoup
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine ,func
 
 
-from models import Person,Match,Contact,User,FaceEncoding ,Location
+from models import Person,Match,Contact,User,FaceEncoding ,Location ,Source,SourcePage,ScrapedPerson
 from threading import Thread
 from datetime import timedelta
+import re
 
 from flask_jwt_extended import (
     JWTManager, jwt_required,
@@ -47,14 +48,11 @@ scheduler.start()
 app.register_blueprint(auth_app)
 app.register_blueprint(job_app)
 
+jwt = JWTManager(app)
 
 app.config['JWT_SECRET_KEY'] = 'savior-key'  # set the JWT secret key
 app.config['JWT_HEADER_NAME'] = 'token'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=5)
-
-
-jwt = JWTManager(app)
-
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
 
@@ -152,7 +150,6 @@ def get_matches():
 
 
 
-
 def uploader(file):
     result = cloudinary.uploader.upload(file)
     return result["secure_url"]
@@ -164,17 +161,113 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 @app.route('/scraper')
 def scrap_img():
-    htmldata = requests.get('https://atfalmafkoda.com/ar/home').text
-    soup = BeautifulSoup(htmldata, 'html.parser')
-    images = soup.find_all('div', class_='slid_img')
-    res = []
-    for item in images:
-        res.append({"name": (item.h1.text),
-                    "image": ("https://atfalmafkoda.com"+item.img["src"]),
-                    "date": (item.p.text)})
-    return jsonify(res)
+    pages = session.query(SourcePage).filter_by(scraped=False).all()
+    if not pages:
+       return jsonify("No more pages to scrape.")
+
+    for page in pages:
+        url = page.url
+        for i in range(1, page.max_page_numbers):
+          try:
+             source_page = re.sub(r'max_page_numbers', str(i), url)
+             print(source_page)
+             htmldata = requests.get(source_page).text
+             soup = BeautifulSoup(htmldata, 'html.parser')
+             items = soup.find_all('div', class_='slid_img')
+             for item in items:
+                name = item.h1.text
+                image = "https://atfalmafkoda.com" + item.img["src"]
+                date = item.p.text
+
+                scraped_person = ScrapedPerson(name=name, image=image, date=date, type=page.type, source=page.source)
+                session.add(scraped_person)
+          except Exception as e:
+            print(f"An error occurred for page {i}: {str(e)}")
+            continue
+        page.scraped=True
+        session.commit()
+    return jsonify("Done!")
+
+@app.route('/api/scrapedpersons', methods=['GET'])
+def get_scraped_persons():
+    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
+    result = []
+    for scraped_person in scraped_persons:
+        result.append({
+            'name': scraped_person.name,
+            'image': scraped_person.image,
+            'date': scraped_person.date,
+            'type': scraped_person.type,
+            'source':scraped_person.source.name
+        })
+
+    return jsonify(result)
 
 
+@app.route('/scraping')
+def show_scraped_persons():
+    # Fetch 200 random scraped persons from the database
+    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
+
+    # Count the total number of ScrapedPerson records
+    scraped_person_count = session.query(ScrapedPerson).count()
+
+    return render_template('scraped_persons.html', scraped_persons=scraped_persons, scraped_person_count=scraped_person_count)
+
+
+@app.route('/add_source', methods=['GET', 'POST'])
+def add_source():
+    if request.method == 'POST':
+        name = request.form['name']
+        url = request.form['url']
+
+        # Create a new Source instance and add it to the database
+        new_source = Source(name=name, url=url)
+        session.add(new_source)
+        session.commit()
+
+        return redirect('/source/{}'.format(new_source.id))
+
+    return render_template('add_source.html')
+
+@app.route('/source/<int:source_id>/add_page', methods=['GET', 'POST'])
+def add_page(source_id):
+    if request.method == 'POST':
+        name = request.form['name']
+        url = request.form['url']
+        selectors = request.form['selectors']
+        type=request.form['type']
+        max_page_numbers=request.form['max_page_numbers']
+        # Retrieve the Source object based on source_id
+        source = session.query(Source).get(source_id)
+        # Create a new SourcePage instance and add it to the database
+        new_page = SourcePage(name=name, url=url, selectors=selectors,type=type,max_page_numbers=max_page_numbers, source=source)
+        session.add(new_page)
+        session.commit()
+
+        return redirect('/source/{}'.format(source_id))
+
+    return render_template('add_page.html', source_id=source_id)
+
+@app.route('/source/<int:source_id>', methods=['GET'])
+def source(source_id):
+    source = session.query(Source).get(source_id)
+    # pages = source.pages
+    pages=source.pages
+    return render_template('source.html', source=source, pages=pages)
+
+@app.route('/source_page/<int:page_id>', methods=['DELETE'])
+def delete_source_page(page_id):
+    page = session.query(SourcePage).get(page_id)
+
+    if not page:
+        return jsonify({'message': 'Source page not found'}), 404
+
+    session.delete(page)
+    session.commit()
+    session.close()  # Close the session
+
+    return jsonify({'message': 'Source page deleted successfully'})
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -366,10 +459,9 @@ def create_person():
     new_person_location = Location(latitude=latitude, longitude=longitude,address=address, person_id=new_person.id)
     session.add(new_person_location)
     session.commit()
-    save_face_encodings(new_person.image,new_person)
-#       # Run the background task in a separate thread
-#     # thread = Thread(target=job_app, args=(new_person,))
-#     # thread.start()
+      # Run the background task in a separate thread
+    thread = Thread(target=save_face_encodings(new_person.image,new_person), args=(new_person,))
+    thread.start()
 
     return jsonify({'message': 'Person created successfully'}), 201
 
@@ -441,19 +533,24 @@ def get_person(person_id):
 #     session.commit()
 
 #     return encoding
-
 def save_face_encodings(person_image, person):
     # Load the image and find all faces in it
     response = urllib.request.urlopen(person_image)
     image = face_recognition.load_image_file(response)
-    # face_locations = face_recognition.face_locations(image)
-    face_encoding = face_recognition.face_encodings(image)[0]
+    face_encodings = face_recognition.face_encodings(image)
+
+    if len(face_encodings) == 0:
+        return  # Return if no faces are detected
+
+    face_encoding = face_encodings[0]
     person = session.merge(person)  # Detach the person object from its current session
-    # Save the face encodings to the database
-    face_encoding = FaceEncoding(person=person)
-    face_encoding.set_encoding(face_encoding)
-    session.add(face_encoding)
+
+    # Save the face encoding to the database
+    face_encoding_model = FaceEncoding(person=person)
+    face_encoding_model.set_encoding(face_encoding)
+    session.add(face_encoding_model)
     session.commit()
+
 
 @app.route('/api/persons/search',methods=["GET"])
 def search_persons():

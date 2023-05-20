@@ -138,5 +138,61 @@ class Location(Base):
 
     def __repr__(self):
         return f"<Location(id={self.id}, latitude={self.latitude}, longitude={self.longitude})>"
+
+
+class Source(Base):
+    __tablename__ = 'source'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    url = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    pages = relationship('SourcePage', backref='source', lazy=True)
+
+    scraped_persons = relationship('ScrapedPerson', backref='source', lazy=True)
+
+    def __init__(self, name, url):
+        self.name = name
+        self.url = url
+
+
+class SourcePage(Base):
+    __tablename__ = 'source_page'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    url = Column(String(200), nullable=False)
+    selectors = Column(String, nullable=False)
+    scraped = Column(Boolean, default=False)
+    type = Column(String,nullable=False)
+    max_page_numbers = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    source_id = Column(Integer, ForeignKey('source.id'), nullable=False)
+
+    def __init__(self, name, url, selectors ,type, source, max_page_numbers=None, scraped=False):
+        self.name = name
+        self.url = url
+        self.selectors = selectors
+        self.source = source
+        self.type = type
+        self.max_page_numbers = max_page_numbers
+        self.scraped = scraped
+
+class ScrapedPerson(Base):
+    __tablename__ = 'scraped_person'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    image = Column(String(200), nullable=False)
+    date = Column(String, nullable=True)
+    type = Column(String(50), nullable=True)
+    source_id = Column(Integer, ForeignKey('source.id'), nullable=False)
+
+    def __init__(self, name, image, date, type, source):
+        self.name = name
+        self.image = image
+        self.date = date
+        self.type = type
+        self.source = source
+
+
 # # create the tables
 Base.metadata.create_all(engine)
