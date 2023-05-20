@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css">
+  <style>
+     body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+     }
+
+     h1 {
+        color: #333;
+     }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Add Source Page</h1>
+    <form method="POST" action="{{ url_for('add_page', source_id=source_id) }}">
+      <div class="mb-3">
+        <label for="name" class="form-label">Name:</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+      </div>
+      <div class="mb-3">
+        <label for="url" class="form-label">URL:</label>
+        <input type="text" class="form-control" id="url" name="url" required>
+      </div>
+      <div class="mb-3">
+        <label for="selectors" class="form-label">Selectors:</label>
+        <input type="text" class="form-control" id="selectors" name="selectors" required>
+      </div>
+      <div class="mb-3">
+        <label for="type" class="form-label">Type:</label>
+        <input type="text" class="form-control" id="type" name="type" required>
+      </div>
+      <div class="mb-3">
+        <label for="max_page_numbers" class="form-label">Max Page Numbers:</label>
+        <input type="number" class="form-control" id="max_page_numbers" name="max_page_numbers">
+      </div>
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="scraped" name="scraped">
+        <label class="form-check-label" for="scraped">Scraped:</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Source Page</button>
+    </form>
+  </div>
+</body>
+</html>
