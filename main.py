@@ -23,10 +23,10 @@ from bs4 import BeautifulSoup
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine ,func
+from sqlalchemy import create_engine ,func ,desc
 
 
-from models import Person,Match,Contact,User,FaceEncoding ,Location ,Source,SourcePage,ScrapedPerson
+from models import Person,Match,Contact,User,FaceEncoding ,Location ,Source,SourcePage
 from threading import Thread
 from datetime import timedelta
 import re
@@ -179,8 +179,20 @@ def scrap_img():
                 image = "https://atfalmafkoda.com" + item.img["src"]
                 date = item.p.text
 
-                scraped_person = ScrapedPerson(name=name, image=image, date=date, type=page.type, source=page.source)
+                scraped_person = Person(
+                                  name=name,
+                                  type=page.type,
+                                  image=image,
+                                  created_at=date,
+                                  source_id=page.source.id)
                 session.add(scraped_person)
+                egypt_location = Location(
+                                  latitude=0.0,
+                                  longitude=0.0,
+                                  address="Egypt",
+                                  person=scraped_person)
+                session.add(egypt_location)
+                session.commit()
           except Exception as e:
             print(f"An error occurred for page {i}: {str(e)}")
             continue
@@ -190,7 +202,7 @@ def scrap_img():
 
 @app.route('/api/scrapedpersons', methods=['GET'])
 def get_scraped_persons():
-    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
+    scraped_persons = session.query(Person).order_by(func.random()).limit(200).all()
     result = []
     for scraped_person in scraped_persons:
         result.append({
@@ -207,10 +219,10 @@ def get_scraped_persons():
 @app.route('/scraping')
 def show_scraped_persons():
     # Fetch 200 random scraped persons from the database
-    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
+    scraped_persons = session.query(Person).order_by(func.random()).limit(200).all()
 
     # Count the total number of ScrapedPerson records
-    scraped_person_count = session.query(ScrapedPerson).count()
+    scraped_person_count = session.query(Person).count()
 
     return render_template('scraped_persons.html', scraped_persons=scraped_persons, scraped_person_count=scraped_person_count)
 
@@ -321,7 +333,7 @@ def list_persons():
 
 @app.route('/api/persons', methods=["GET"])
 def get_persons():
-    persons =session.query(Person).join(Location).all()
+    persons = session.query(Person).join(Location).order_by(desc(Person.created_at)).limit(100).all()
 
     # convert persons to JSON
     persons_json = json.dumps([{
@@ -337,7 +349,7 @@ def get_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
-        'created_at': person.created_at.isoformat()
+        'created_at': person.created_at
     }
     for person in persons])
 

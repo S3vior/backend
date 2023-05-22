@@ -19,24 +19,26 @@ class Person(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    age = Column(String)
+    age = Column(String, nullable=True)  # Nullable age field
     gender = Column(String)
-    description = Column(String)
+    description = Column(String, nullable=True)  # Nullable description field
     image = Column(String)
     type = Column(String)
     matched = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(String, default=datetime.now)
     face_encoding = relationship("FaceEncoding", uselist=False, back_populates="person")
 
-
     # define the relationship with User
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey('users.id'),nullable=True)
     user = relationship("User", back_populates="persons")
-
 
     unique_person = relationship("UniquePerson", back_populates="person")
 
     location = relationship("Location", uselist=False, back_populates="person")
+
+    source_id = Column(Integer, ForeignKey('source.id'), nullable=True)
+
+
 
     def __repr__(self):
         return f"<Person(id={self.id}, name={self.name}, age={self.age}, gender={self.gender}, type={self.type}, matched={self.matched})>"
@@ -139,7 +141,6 @@ class Location(Base):
     def __repr__(self):
         return f"<Location(id={self.id}, latitude={self.latitude}, longitude={self.longitude})>"
 
-
 class Source(Base):
     __tablename__ = 'source'
     id = Column(Integer, primary_key=True)
@@ -149,7 +150,6 @@ class Source(Base):
 
     pages = relationship('SourcePage', backref='source', lazy=True)
 
-    scraped_persons = relationship('ScrapedPerson', backref='source', lazy=True)
 
     def __init__(self, name, url):
         self.name = name
@@ -177,21 +177,21 @@ class SourcePage(Base):
         self.max_page_numbers = max_page_numbers
         self.scraped = scraped
 
-class ScrapedPerson(Base):
-    __tablename__ = 'scraped_person'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)
-    image = Column(String(200), nullable=False)
-    date = Column(String, nullable=True)
-    type = Column(String(50), nullable=True)
-    source_id = Column(Integer, ForeignKey('source.id'), nullable=False)
+# class ScrapedPerson(Base):
+#     __tablename__ = 'scraped_person'
+#     id = Column(Integer, primary_key=True)
+#     name = Column(String(100), nullable=False)
+#     image = Column(String(200), nullable=False)
+#     date = Column(String, nullable=True)
+#     type = Column(String(50), nullable=True)
+#     source_id = Column(Integer, ForeignKey('source.id'), nullable=False)
 
-    def __init__(self, name, image, date, type, source):
-        self.name = name
-        self.image = image
-        self.date = date
-        self.type = type
-        self.source = source
+#     def __init__(self, name, image, date, type, source):
+#         self.name = name
+#         self.image = image
+#         self.date = date
+#         self.type = type
+#         self.source = source
 
 
 # # create the tables
