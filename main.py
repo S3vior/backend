@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine ,func
+from sqlalchemy import create_engine ,func,desc
 
 
 from models import Person,Match,Contact,User,FaceEncoding ,Location ,Source,SourcePage,ScrapedPerson
@@ -321,7 +321,7 @@ def list_persons():
 
 @app.route('/api/persons', methods=["GET"])
 def get_persons():
-    persons =session.query(Person).join(Location).all()
+    persons =session.query(Person).join(Location).order_by(desc(Person.created_at)).limit(100).all()
 
     # convert persons to JSON
     persons_json = json.dumps([{
