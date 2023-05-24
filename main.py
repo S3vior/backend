@@ -43,7 +43,6 @@ app = Flask(__name__)
 scheduler = BackgroundScheduler()
      # Create the job
      # Start the scheduler
-scheduler.start()
 
 app.register_blueprint(auth_app)
 app.register_blueprint(job_app)
@@ -98,8 +97,8 @@ def find_similar():
     with app.app_context():
         similars()
 
-scheduler.add_job(func=find_similar, trigger="interval", hours=3)
-
+# scheduler.add_job(func=find_similar, trigger="interval", minutes=3)
+# scheduler.start()
 
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
@@ -124,7 +123,6 @@ def get_matches():
                'latitude': missed_person.location.latitude,
                'longitude': missed_person.location.longitude,
                },
-             "user_name":missed_person.user.user_name,
              'created_at': missed_person.created_at.isoformat()},
 
             'found_person': {
@@ -140,7 +138,6 @@ def get_matches():
                'latitude': found_person.location.latitude,
                'longitude': found_person.location.longitude,
                },
-               "user_name":found_person.user.user_name,
 
         'created_at': found_person.created_at.isoformat()},
 
@@ -460,7 +457,7 @@ def create_person():
     session.add(new_person_location)
     session.commit()
       # Run the background task in a separate thread
-    thread = Thread(target=save_face_encodings(new_person.image,new_person), args=(new_person,))
+    thread = Thread(target=save_face_encodings, args=(new_person.image,new_person))
     thread.start()
 
     return jsonify({'message': 'Person created successfully'}), 201
@@ -550,6 +547,7 @@ def save_face_encodings(person_image, person):
     face_encoding_model.set_encoding(face_encoding)
     session.add(face_encoding_model)
     session.commit()
+    search_person(face_encoding)
 
 
 @app.route('/api/persons/search',methods=["GET"])
@@ -595,44 +593,33 @@ def contact_us():
     # Return a success message
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
+# @app.route('/search_person/<int:person_id>', methods=['GET'])
+def search_person(img_encoding):
+    # Retrieve all face encodings from the database
+    face_encodings = session.query(FaceEncoding).filter(FaceEncoding.encoding != img_encoding).all()
 
-# @app.route('/search_person', methods=['POST'])
-# def search_person():
-#     # Get the image file from the request
-#     image_file = request.files['image']
+    # Convert face encodings from the database to a list of numpy arrays
+    known_encodings = [fe.get_encoding() for fe in face_encodings]
 
-#     # Load the image and extract the face encodings
-#     image = face_recognition.load_image_file(image_file)
-#     encodings = face_recognition.face_encodings(image)
+    # Calculate the face distances and find the best match
+    face_distances = np.linalg.norm(known_encodings - img_encoding, axis=1)
+    best_match_index = np.argmin(face_distances)
+    face_match_percentage = round(((1 - face_distances[best_match_index]) * 100), 1)
 
-#     # Retrieve all face encodings from the database
-#     face_encodings = session.query(FaceEncoding).all()
-
-#     # Initialize the result
-#     result = None
-
-#     # Iterate through the face encodings in the database
-#     for face_encoding in face_encodings:
-#         # Convert the encoding to a numpy array
-#         encoding = face_encoding.get_encoding()
-
-#         # Compare the face encodings
-#         matches = face_recognition.compare_faces([encoding], encodings[0])
-#         if matches[0]:
-#             # If a match is found, set the result and break the loop
-#             result = face_encoding.person
-#             break
-
-#     if result:
-#         # If a person is found, return their details
-#         return jsonify({
-#             'person_id': result.id,
-#             'name': result.name,
-#             'age': result.age
-#         })
-#     else:
-#         # If no person is found, return an appropriate response
-#         return jsonify({'message': 'Person not found'})
+    # Check if the match percentage is below 50%
+    if face_match_percentage < 50.0:
+        matched_person_id = face_encodings[best_match_index].person_id
+        person = session.query(Person).get(matched_person_id)
+        return
+        # return jsonify(f"Unknown in {encodings_count} faces and best match_percentage = {face_match_percentage} with {person.name}")
+    else:
+        matched_person_id = face_encodings[best_match_index].person_id
+        matched_person = session.query(Person).get(matched_person_id)
+        match = Match(missed_person_id=matched_person_id, found_person_id=matched_person_id)
+        session.add(match)
+        session.commit()
+        return
+        # return jsonify(f"Matched person ID: {matched_person_id}, Matching percentage: {face_match_percentage}%")
 
 # @app.route('/encode')
 # def save_all_face_encodings():
