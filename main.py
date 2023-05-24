@@ -1,7 +1,7 @@
 """
     API REST con Python 3 y SQLite 3
 """
-from flask import Flask, jsonify, request, redirect, render_template,  make_response
+from flask import Flask, jsonify, request, render_template
 
 import face_recognition
 import json
@@ -10,42 +10,35 @@ import cloudinary.uploader
 import cloudinary.api
 from PIL import Image
 import urllib.request
-import ast
 import numpy as np
 
-import time
-import atexit
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-import requests
-from bs4 import BeautifulSoup
-
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker,contains_eager
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine ,func,desc
+from sqlalchemy import create_engine ,func,desc,or_
 
 
-from models import Person,Match,Contact,User,FaceEncoding ,Location ,Source,SourcePage,ScrapedPerson
+from models import Person,Match,Contact,User,FaceEncoding ,Location
 from threading import Thread
-from datetime import timedelta
-import re
 
 from flask_jwt_extended import (
     JWTManager, jwt_required,
     get_jwt_identity
 )
 from auth import auth_app
+from scraping import scrap_app
 from background_job import job_app
 from geopy.geocoders import Nominatim
+
 app = Flask(__name__)
 
 scheduler = BackgroundScheduler()
-     # Create the job
-     # Start the scheduler
-
 app.register_blueprint(auth_app)
-app.register_blueprint(job_app)
+app.register_blueprint(scrap_app)
+
+# app.register_blueprint(job_app)
 
 jwt = JWTManager(app)
 
@@ -123,6 +116,7 @@ def get_matches():
                'latitude': missed_person.location.latitude,
                'longitude': missed_person.location.longitude,
                },
+            "user": missed_person.user.user_name,
              'created_at': missed_person.created_at.isoformat()},
 
             'found_person': {
@@ -138,7 +132,7 @@ def get_matches():
                'latitude': found_person.location.latitude,
                'longitude': found_person.location.longitude,
                },
-
+        "user": found_person.user.user_name,
         'created_at': found_person.created_at.isoformat()},
 
         })
@@ -154,117 +148,6 @@ def uploader(file):
 
 # You can change this to any folder on your system
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-
-@app.route('/scraper')
-def scrap_img():
-    pages = session.query(SourcePage).filter_by(scraped=False).all()
-    if not pages:
-       return jsonify("No more pages to scrape.")
-
-    for page in pages:
-        url = page.url
-        for i in range(1, page.max_page_numbers):
-          try:
-             source_page = re.sub(r'max_page_numbers', str(i), url)
-             print(source_page)
-             htmldata = requests.get(source_page).text
-             soup = BeautifulSoup(htmldata, 'html.parser')
-             items = soup.find_all('div', class_='slid_img')
-             for item in items:
-                name = item.h1.text
-                image = "https://atfalmafkoda.com" + item.img["src"]
-                date = item.p.text
-
-                scraped_person = ScrapedPerson(name=name, image=image, date=date, type=page.type, source=page.source)
-                session.add(scraped_person)
-          except Exception as e:
-            print(f"An error occurred for page {i}: {str(e)}")
-            continue
-        page.scraped=True
-        session.commit()
-    return jsonify("Done!")
-
-@app.route('/api/scrapedpersons', methods=['GET'])
-def get_scraped_persons():
-    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
-    result = []
-    for scraped_person in scraped_persons:
-        result.append({
-            'name': scraped_person.name,
-            'image': scraped_person.image,
-            'date': scraped_person.date,
-            'type': scraped_person.type,
-            'source':scraped_person.source.name
-        })
-
-    return jsonify(result)
-
-
-@app.route('/scraping')
-def show_scraped_persons():
-    # Fetch 200 random scraped persons from the database
-    scraped_persons = session.query(ScrapedPerson).order_by(func.random()).limit(200).all()
-
-    # Count the total number of ScrapedPerson records
-    scraped_person_count = session.query(ScrapedPerson).count()
-
-    return render_template('scraped_persons.html', scraped_persons=scraped_persons, scraped_person_count=scraped_person_count)
-
-
-@app.route('/add_source', methods=['GET', 'POST'])
-def add_source():
-    if request.method == 'POST':
-        name = request.form['name']
-        url = request.form['url']
-
-        # Create a new Source instance and add it to the database
-        new_source = Source(name=name, url=url)
-        session.add(new_source)
-        session.commit()
-
-        return redirect('/source/{}'.format(new_source.id))
-
-    return render_template('add_source.html')
-
-@app.route('/source/<int:source_id>/add_page', methods=['GET', 'POST'])
-def add_page(source_id):
-    if request.method == 'POST':
-        name = request.form['name']
-        url = request.form['url']
-        selectors = request.form['selectors']
-        type=request.form['type']
-        max_page_numbers=request.form['max_page_numbers']
-        # Retrieve the Source object based on source_id
-        source = session.query(Source).get(source_id)
-        # Create a new SourcePage instance and add it to the database
-        new_page = SourcePage(name=name, url=url, selectors=selectors,type=type,max_page_numbers=max_page_numbers, source=source)
-        session.add(new_page)
-        session.commit()
-
-        return redirect('/source/{}'.format(source_id))
-
-    return render_template('add_page.html', source_id=source_id)
-
-@app.route('/source/<int:source_id>', methods=['GET'])
-def source(source_id):
-    source = session.query(Source).get(source_id)
-    # pages = source.pages
-    pages=source.pages
-    return render_template('source.html', source=source, pages=pages)
-
-@app.route('/source_page/<int:page_id>', methods=['DELETE'])
-def delete_source_page(page_id):
-    page = session.query(SourcePage).get(page_id)
-
-    if not page:
-        return jsonify({'message': 'Source page not found'}), 404
-
-    session.delete(page)
-    session.commit()
-    session.close()  # Close the session
-
-    return jsonify({'message': 'Source page deleted successfully'})
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -334,6 +217,7 @@ def get_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
+        "user": person.user.user_name,
         'created_at': person.created_at.isoformat()
     }
     for person in persons])
@@ -360,6 +244,7 @@ def get_missing_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
          },
+        "user": person.user.user_name,
         'created_at': person.created_at.isoformat()
     } for person in persons])
 
@@ -385,11 +270,65 @@ def get_founded_persons():
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
+        "user": person.user.user_name,
         'created_at': person.created_at.isoformat()
         } for person in persons])
 
     # return JSON response
     return persons_json
+
+@app.route('/api/matches/<int:match_id>', methods=['GET'])
+def get_match(match_id):
+    session = Session()
+    match = session.query(Match).filter_by(id=match_id).first()
+    session.close()
+
+    if not match:
+        return jsonify({'error': 'Match not found'}), 404
+
+    missed_person = session.query(Person).filter_by(id=match.missed_person_id).first()
+    found_person = session.query(Person).filter_by(id=match.found_person_id).first()
+
+    if not missed_person or not found_person:
+        return jsonify({'error': 'Related persons not found'}), 404
+
+    result = {
+        'id': match.id,
+        'missed_person': {
+            'id': missed_person.id,
+            'name': missed_person.name,
+            'age': missed_person.age,
+            'gender': missed_person.gender,
+            'description': missed_person.description,
+            'image': missed_person.image,
+            'type': missed_person.type,
+            'location': {
+                'address': missed_person.location.address,
+                'latitude': missed_person.location.latitude,
+                'longitude': missed_person.location.longitude,
+            },
+            'user': missed_person.user.user_name,
+            'created_at': missed_person.created_at.isoformat()
+        },
+        'found_person': {
+            'id': found_person.id,
+            'name': found_person.name,
+            'age': found_person.age,
+            'gender': found_person.gender,
+            'description': found_person.description,
+            'image': found_person.image,
+            'type': found_person.type,
+            'location': {
+                'address': found_person.location.address,
+                'latitude': found_person.location.latitude,
+                'longitude': found_person.location.longitude,
+            },
+            'user': found_person.user.user_name,
+            'created_at': found_person.created_at.isoformat()
+        }
+    }
+
+    return jsonify(result)
 
 
 @app.route('/persons/<int:person_id>', methods=['DELETE'])
@@ -487,8 +426,6 @@ def get_person_matches(person_id):
                  'type': found_person.type,
                  'created_at': found_person.created_at.isoformat(),
             }
-
-    # return JSON response
     return persons_json
 
 @app.route('/api/persons/<int:person_id>', methods=['GET'])
@@ -514,6 +451,7 @@ def get_person(person_id):
             'latitude': person.location.latitude,
             'longitude': person.location.longitude,
         },
+        "user": person.user.user_name,
         'created_at': person.created_at
         # Add any other fields you want to include
     })
@@ -530,46 +468,43 @@ def get_person(person_id):
 #     session.commit()
 
 #     return encoding
-def save_face_encodings(person_image, person):
-    # Load the image and find all faces in it
-    response = urllib.request.urlopen(person_image)
-    image = face_recognition.load_image_file(response)
-    face_encodings = face_recognition.face_encodings(image)
 
-    if len(face_encodings) == 0:
-        return  # Return if no faces are detected
-
-    face_encoding = face_encodings[0]
-    person = session.merge(person)  # Detach the person object from its current session
-
-    # Save the face encoding to the database
-    face_encoding_model = FaceEncoding(person=person)
-    face_encoding_model.set_encoding(face_encoding)
-    session.add(face_encoding_model)
-    session.commit()
-    search_person(face_encoding)
-
-
-@app.route('/api/persons/search',methods=["GET"])
+@app.route('/api/persons/search', methods=["GET"])
 def search_persons():
     name = request.args.get('name')
     if not name:
         return jsonify({'error': 'Please provide a name parameter'}), 400
 
     session = Session()
-    persons = session.query(Person).filter_by(name=name).all()
+    english_name_query = or_(
+        func.lower(func.replace(Person.name, 'أ', 'ا')).like(func.lower(f'%{name}%')),
+        func.lower(Person.name).like(func.lower(f'%{name}%'))
+    )
+    arabic_name_query = func.lower(Person.name).like(func.lower(f'%{name}%'))
+    persons = session.query(Person).join(Person.location).options(contains_eager(Person.location)).filter(or_(english_name_query, arabic_name_query)).all()
+    session.close()
+
     if not persons:
         return jsonify({'error': 'Person not found'}), 404
-    session.close()
-    results = []
-    for person in persons:
-        results.append({
+
+    return jsonify([
+        {
             'id': person.id,
             'name': person.name,
             'age': person.age,
-            'gender': person.gender
-        })
-    return jsonify(results)
+            'gender': person.gender,
+            'description': person.description,
+            'image': person.image,
+            'type': person.type,
+            'location': {
+                'address': person.location.address,
+                'latitude': person.location.latitude,
+                'longitude': person.location.longitude,
+            },
+            'created_at': person.created_at.isoformat()
+        }
+        for person in persons
+    ])
 
 
 @app.route('/api/contact_us', methods=['POST'])
@@ -593,10 +528,32 @@ def contact_us():
     # Return a success message
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
-# @app.route('/search_person/<int:person_id>', methods=['GET'])
-def search_person(img_encoding):
+
+def save_face_encodings(person_image, person):
+    # Load the image and find all faces in it
+    response = urllib.request.urlopen(person_image)
+    image = face_recognition.load_image_file(response)
+    face_encodings = face_recognition.face_encodings(image)
+
+    if len(face_encodings) == 0:
+        return  # Return if no faces are detected
+
+    face_encoding = face_encodings[0]
+    person = session.merge(person)  # Detach the person object from its current session
+
+    # Save the face encoding to the database
+    face_encoding_model = FaceEncoding(person=person)
+    face_encoding_model.set_encoding(face_encoding)
+    session.add(face_encoding_model)
+    session.commit()
+    search_person(face_encoding,person)
+
+
+def search_person(img_encoding, person):
     # Retrieve all face encodings from the database
-    face_encodings = session.query(FaceEncoding).filter(FaceEncoding.encoding != img_encoding).all()
+    face_encodings = session.query(FaceEncoding).filter(FaceEncoding.person_id != person.id).all()
+    if len(face_encodings) == 0:
+        return  # Return if no faces are detected
 
     # Convert face encodings from the database to a list of numpy arrays
     known_encodings = [fe.get_encoding() for fe in face_encodings]
@@ -615,31 +572,13 @@ def search_person(img_encoding):
     else:
         matched_person_id = face_encodings[best_match_index].person_id
         matched_person = session.query(Person).get(matched_person_id)
-        match = Match(missed_person_id=matched_person_id, found_person_id=matched_person_id)
+        if (matched_person.type == person.type):
+            return
+        match = Match(missed_person_id=matched_person_id, found_person_id=person.id)
         session.add(match)
         session.commit()
         return
         # return jsonify(f"Matched person ID: {matched_person_id}, Matching percentage: {face_match_percentage}%")
-
-# @app.route('/encode')
-# def save_all_face_encodings():
-#     # Get the request data
-#     persons=session.query(Person).all()
-
-#     # Iterate over all persons
-#     for person in persons:
-#         # Load the image and find all faces in it
-#         save_face_encodings(person.image,person)
-
-
-#     return "Face encodings saved successfully"
-
-
-# @app.route('/deleteall')
-# def save_all_face_encodings():
-#     # Get the request data
-#     f =session.query(FaceEncoding).all()
-#     return f
 
 if __name__ == "__main__":
     """
