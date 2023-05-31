@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, redirect, render_template,  make_response ,Blueprint
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError ,SQLAlchemyError
 from sqlalchemy import create_engine
 import json
 from models import User
@@ -24,7 +24,21 @@ Session = sessionmaker(bind=engine)
 # create a session
 session = Session()
 
-# define the authentication endpoints
+
+@auth_app.route('/api/users/update_token', methods=['POST'])
+@jwt_required()
+def update_fcm_token():
+    current_user = get_jwt_identity()
+    fcm_token = request.json.get('fcm_token')
+
+    user = session.query(User).filter_by(id=current_user).first()
+    if user:
+        user.fcm_token = fcm_token
+        session.commit()
+        return {'message': 'FCM token updated successfully'}
+    else:
+        return {'message': 'User not found'}, 404
+
 @auth_app.route('/api/auth/register', methods=['POST'])
 def register():
     # get user data from request
@@ -118,6 +132,40 @@ def get_user_profile(user_id):
         'user_name': user.user_name,
         'phone_number': user.phone_number,
     }), 200
+@auth_app.route('/users/<int:user_id>', methods=['PUT'])
+def edit_user_profile(user_id):
+    # Retrieve the request data
+    data = request.get_json()
+
+    # Start a new database session
+    session = Session()
+
+    try:
+        # Retrieve the user from the database
+        user = session.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Update the user's profile
+        user.user_name = data.get('user_name', user.user_name)
+        user.phone_number = data.get('phone_number', user.phone_number)
+        user.password = data.get('password', user.password)
+
+        # Commit the changes to the database
+        session.commit()
+
+        # Return the updated user profile
+        return jsonify({'message': 'User profile updated successfully', 'user': user.__repr__()})
+
+    except SQLAlchemyError as e:
+        # Handle any database errors
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        # Close the database session
+        session.close()
 @auth_app.route('/api/users', methods=["GET"])
 def get_users():
     users = session.query(User).all()

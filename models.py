@@ -70,7 +70,7 @@ class User(Base):
     password = Column(String)
     fcm_token = Column(String)
     token = Column(String)
-
+    
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")
 
@@ -119,6 +119,7 @@ class FaceEncoding(Base):
 class Match(Base):
     __tablename__ = 'matches'
     id = Column(Integer, primary_key=True)
+    match_percentage = Column(String)
     missed_person_id = Column(Integer, ForeignKey('persons.id'))
     found_person_id = Column(Integer, ForeignKey('persons.id'))
     missed_person = relationship("Person", foreign_keys=[missed_person_id])

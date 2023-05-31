@@ -29,7 +29,7 @@ from flask_jwt_extended import (
 )
 from auth import auth_app
 from scraping import scrap_app
-from background_job import job_app
+# from background_job import job_app
 from geopy.geocoders import Nominatim
 
 app = Flask(__name__)
@@ -360,43 +360,45 @@ def get_address(latitude, longitude):
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
-    # get the person data from the request body
+    # Get the person data from the request body
     person_details = request.form
     name = person_details['name']
     age = person_details['age']
     description = person_details['description']
     gender = person_details['gender']
     person_type = person_details['type']
-    latitude = float(person_details['latitude']) # convert to float
-    longitude = float(person_details['longitude']) # convert to float
+    latitude = float(person_details['latitude'])
+    longitude = float(person_details['longitude'])
 
-    # check if required fields are present
+    # Check if required fields are present
     if not all([name, age, gender, person_type]):
         return jsonify({'message': 'Please provide all required fields.'}), 400
 
-    # upload the image to Cloudinary
+    # Upload the image to Cloudinary after enhancing it
     image = request.files['image']
     if not image:
         return jsonify({'message': 'Please provide an image.'}), 400
 
-    uploaded_image = cloudinary.uploader.upload(image)
-    # create a Person record with the uploaded image
+    # Upload the enhanced image to Cloudinary
+    uploaded_image =  cloudinary.uploader.upload(image)
+
+    # Create a Person record with the uploaded image
     user_id = get_jwt_identity()
     new_person = Person(name=name, age=age, gender=gender, description=description,
-                        type=person_type, image=uploaded_image["secure_url"], user_id=user_id)
+                        type=person_type, image=uploaded_image['secure_url'], user_id=user_id)
 
-    # create a session and add the new person to the database
+    # Create a session and add the new person to the database
     session = Session()
     session.add(new_person)
     session.commit()
 
-      # create a new PersonLocation record and associate it with the newly created Person
+    # Create a new PersonLocation record and associate it with the newly created Person
     address = get_address(latitude, longitude)
-    new_person_location = Location(latitude=latitude, longitude=longitude,address=address, person_id=new_person.id)
+    new_person_location = Location(latitude=latitude, longitude=longitude, address=address, person_id=new_person.id)
     session.add(new_person_location)
     session.commit()
-      # Run the background task in a separate thread
-    thread = Thread(target=save_face_encodings, args=(new_person.image,new_person))
+    # Run the background task in a separate thread
+    thread = Thread(target=save_face_encodings, args=(new_person.image, new_person))
     thread.start()
 
     return jsonify({'message': 'Person created successfully'}), 201
@@ -563,22 +565,52 @@ def search_person(img_encoding, person):
     best_match_index = np.argmin(face_distances)
     face_match_percentage = round(((1 - face_distances[best_match_index]) * 100), 1)
 
-    # Check if the match percentage is below 50%
-    if face_match_percentage < 50.0:
-        matched_person_id = face_encodings[best_match_index].person_id
-        person = session.query(Person).get(matched_person_id)
-        return
-        # return jsonify(f"Unknown in {encodings_count} faces and best match_percentage = {face_match_percentage} with {person.name}")
-    else:
+    # Check if the match percentage is above 45%
+    if face_match_percentage > 45.0:
         matched_person_id = face_encodings[best_match_index].person_id
         matched_person = session.query(Person).get(matched_person_id)
-        if (matched_person.type == person.type):
+        if matched_person.type == person.type:
             return
-        match = Match(missed_person_id=matched_person_id, found_person_id=person.id)
+        match = Match(match_percentage=str(face_match_percentage),
+                      missed_person_id=matched_person_id,
+                      found_person_id=person.id)
         session.add(match)
         session.commit()
+
+        user_token = session.query(User.fcm_token).filter(User.id == person.user_id).scalar()
+        if user_token:
+            # Send FCM notification to the user
+            message = f"A match has been found for your uploaded person."
+            send_fcm_notification(user_token, message)
+
         return
-        # return jsonify(f"Matched person ID: {matched_person_id}, Matching percentage: {face_match_percentage}%")
+    else :
+        return
+
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import messaging
+cred = credentials.Certificate('sav3or-firebase.json')
+firebase_admin.initialize_app(cred)
+
+def send_fcm_notification(token, message):
+    # Construct the notification payload
+    notification = messaging.Notification(
+        title='Person Matched',
+        body=message
+    )
+
+    # Construct the FCM message
+    fcm_message = messaging.Message(
+        notification=notification,
+        token=token
+    )
+
+    # Send the FCM message
+    response = messaging.send(fcm_message)
+    print('FCM notification sent:', response)
+
 
 if __name__ == "__main__":
     """
