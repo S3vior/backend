@@ -357,51 +357,70 @@ def get_address(latitude, longitude):
         return None
 
 
+
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
-    # Get the person data from the request body
-    person_details = request.form
-    name = person_details['name']
-    age = person_details['age']
-    description = person_details['description']
-    gender = person_details['gender']
-    person_type = person_details['type']
-    latitude = float(person_details['latitude'])
-    longitude = float(person_details['longitude'])
+    try:
+        # Get the person data from the request body
+        person_details = request.form
+        name = person_details['name']
+        age = person_details['age']
+        description = person_details['description']
+        gender = person_details['gender']
+        person_type = person_details['type']
+        latitude = float(person_details['latitude'])
+        longitude = float(person_details['longitude'])
 
-    # Check if required fields are present
-    if not all([name, age, gender, person_type]):
-        return jsonify({'message': 'Please provide all required fields.'}), 400
+        # Check if required fields are present
+        if not all([name, age, gender, person_type]):
+            return jsonify({'message': 'Please provide all required fields.'}), 400
 
-    # Upload the image to Cloudinary after enhancing it
-    image = request.files['image']
-    if not image:
-        return jsonify({'message': 'Please provide an image.'}), 400
+        # Upload the image to Cloudinary after enhancing it
+        image = request.files.get('image')
+        if not image:
+            return jsonify({'message': 'Please provide an image.'}), 400
 
-    # Upload the enhanced image to Cloudinary
-    uploaded_image =  cloudinary.uploader.upload(image)
+        # Upload the enhanced image to Cloudinary
+        uploaded_image = cloudinary.uploader.upload(image)
 
-    # Create a Person record with the uploaded image
-    user_id = get_jwt_identity()
-    new_person = Person(name=name, age=age, gender=gender, description=description,
-                        type=person_type, image=uploaded_image['secure_url'], user_id=user_id)
+        # Create a Person record with the uploaded image
+        user_id = get_jwt_identity()
+        new_person = Person(
+            name=name,
+            age=age,
+            gender=gender,
+            description=description,
+            type=person_type,
+            image=uploaded_image['secure_url'],
+            user_id=user_id
+        )
 
-    # Create a session and add the new person to the database
-    session = Session()
-    session.add(new_person)
-    session.commit()
+        # Create a session and add the new person to the database
+        session = Session()
+        session.add(new_person)
+        session.commit()
 
-    # Create a new PersonLocation record and associate it with the newly created Person
-    address = get_address(latitude, longitude)
-    new_person_location = Location(latitude=latitude, longitude=longitude, address=address, person_id=new_person.id)
-    session.add(new_person_location)
-    session.commit()
-    # Run the background task in a separate thread
-    thread = Thread(target=save_face_encodings, args=(new_person.image, new_person))
-    thread.start()
+        # Create a new PersonLocation record and associate it with the newly created Person
+        address = get_address(latitude, longitude)
+        new_person_location = Location(
+            latitude=latitude,
+            longitude=longitude,
+            address=address,
+            person_id=new_person.id
+        )
+        session.add(new_person_location)
+        session.commit()
 
-    return jsonify({'message': 'Person created successfully'}), 201
+        # Run the background task in a separate thread
+        thread = Thread(target=save_face_encodings, args=(new_person.image, new_person))
+        thread.start()
+
+        return jsonify({'message': 'Person created successfully'}), 201
+
+    except Exception as e:
+        # Handle any exceptions and return an appropriate response
+        return jsonify({'message': 'An error occurred', 'error': str(e)}), 500
 
 @app.route('/api/persons/<int:person_id>/matches', methods=['GET'])
 def get_person_matches(person_id):
