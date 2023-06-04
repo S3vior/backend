@@ -173,8 +173,9 @@ def get_users():
     users_json = json.dumps([{
         'id': user.id,
         'name': user.user_name,
-        'phone_number':user.phone_number
-        # 'token': user.get_access_token(identity=user.id),
+        'phone_number':user.phone_number,
+        'fcm_token': user.fcm_token
+
     } for user in users])
 
     # return JSON response
