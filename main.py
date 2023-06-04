@@ -570,7 +570,7 @@ def save_face_encodings(person_image, person):
     user_token = session.query(User.fcm_token).filter(User.id == person.user_id).scalar()
     if user_token:
         # Send FCM notification to the user
-        message = f"Uploaded New Person Successfuly"
+        message = f"You Uploaded New Person Successfuly"
         send_fcm_notification(user_token, message)
     search_person(face_encoding,person)
 

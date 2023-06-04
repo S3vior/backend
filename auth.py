@@ -43,20 +43,20 @@ def update_fcm_token():
 def register():
     # get user data from request
     user_data = request.get_json()
-
     # create a new user object
     user = User(
         user_name=user_data['user_name'],
         phone_number=user_data['phone_number'],
         password=user_data['password']
     )
-
     # add the user object to the database
     try:
         session = Session()
         session.add(user)
         session.commit()
-        return jsonify({'message': 'User created successfully'}), 201
+        access_token = create_access_token(identity=user.id, additional_claims={'logged_out': False})
+        user.token=access_token
+        return jsonify({'access_token': access_token}), 200
     except IntegrityError:
         session.rollback()
         return jsonify({'message': 'User already exists'}), 400
@@ -69,7 +69,6 @@ def login():
     user_data = request.get_json()
     user_name = user_data['user_name']
     password = user_data['password']
-
     # query the user from the database
     session = Session()
     user = session.query(User).filter_by(user_name=user_name).first()
