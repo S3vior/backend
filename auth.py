@@ -174,8 +174,8 @@ def get_users():
         'id': user.id,
         'name': user.user_name,
         'phone_number':user.phone_number,
-        'fcm_token': user.fcm_token
-
+        'fcm_token': user.fcm_token,
+        'token' : user.token
     } for user in users])
 
     # return JSON response
