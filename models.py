@@ -70,7 +70,6 @@ class User(Base):
     password = Column(String)
     fcm_token = Column(String)
     token = Column(String)
-
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")
 

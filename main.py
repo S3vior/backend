@@ -549,8 +549,8 @@ def contact_us():
     # Return a success message
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
-def store_user_notification(user, message):
-    notification = Notification(message=message, user=user)
+def store_user_notification(user_id, message):
+    notification = Notification(message=message, user_id=user_id)
     session.add(notification)
     session.commit()
 
