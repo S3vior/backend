@@ -608,7 +608,7 @@ def save_face_encodings(person_image, person):
         # Send FCM notification to the user
         message = f"You Uploaded New Person Successfuly"
         send_fcm_notification(user_token, message)
-        store_user_notification(user, message)
+        store_user_notification( message , user.id)
 
     search_person(face_encoding,person)
 
@@ -647,9 +647,7 @@ def search_person(img_encoding, person):
             # Send FCM notification to the user
             message = f"A match has been found for your uploaded person."
             send_fcm_notification(user_token, message)
-            store_user_notification(user, message)
-
-
+            store_user_notification( message , user.id)
         return
     else :
         return
