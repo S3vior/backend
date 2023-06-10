@@ -664,7 +664,7 @@ firebase_admin.initialize_app(cred)
 def send_fcm_notification(token, message):
     # Construct the notification payload
     notification = messaging.Notification(
-        title='Person Matched',
+        title='New Notification',
         body=message
     )
 
