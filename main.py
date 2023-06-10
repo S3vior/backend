@@ -562,12 +562,12 @@ def get_user_notifications(user_id):
 
     try:
         # Query the user and their associated notifications
-        user = session.query(User).get(user_id)
-        notifications = user.notifications
+        # user = session.query(User).get(user_id)
+        user_notifications = session.query(Notification).filter(Notification.user_id == user_id).all()
 
         # Convert notifications to a list of dictionaries
         notification_list = []
-        for notification in notifications:
+        for notification in user_notifications:
             notification_list.append({
             'id': notification.id,
             'message': notification.message
