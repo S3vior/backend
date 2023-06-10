@@ -555,7 +555,7 @@ def store_user_notification(user, message):
     session.commit()
 
 
-@app.route('/users/notifications', methods=['GET'])
+@app.route('/api/user/notifications', methods=['GET'])
 @jwt_required()
 def get_user_notifications():
     # Create a session
