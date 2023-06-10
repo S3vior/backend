@@ -70,15 +70,30 @@ class User(Base):
     password = Column(String)
     fcm_token = Column(String)
     token = Column(String)
-    
+
     # define the relationship with Person
     persons = relationship("Person", back_populates="user")
 
     contacts = relationship("Contact", back_populates="user")
 
+    notifications = relationship("Notification", back_populates="user")
 
     def __repr__(self):
         return f"<User(id={self.id}, user_name={self.user_name}, phone_number={self.phone_number})>"
+
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+
+    id = Column(Integer, primary_key=True)
+    message = Column(String)
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    # Define the relationship with User
+    user = relationship("User", back_populates="notifications")
+
+    def __repr__(self):
+        return f"<Notification(id={self.id}, message={self.message})>"
 
 
 class Contact(Base):

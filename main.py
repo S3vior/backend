@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine ,func,desc,or_
 
 
-from models import Person,Match,Contact,User,FaceEncoding ,Location
+from models import Person,Match,Contact,User,FaceEncoding ,Location ,Notification
 from threading import Thread
 
 from flask_jwt_extended import (
@@ -549,6 +549,43 @@ def contact_us():
     # Return a success message
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
+def store_user_notification(user, message):
+    notification = Notification(message=message, user=user)
+    session.add(notification)
+    session.commit()
+
+
+@app.route('/users/notifications', methods=['GET'])
+@jwt_required()
+def get_user_notifications():
+    # Create a session
+    session = Session()
+
+
+    try:
+        # Query the user and their associated notifications
+        current_user = get_jwt_identity()
+        user = session.query(User).filter_by(id=current_user).first()
+        notifications = user.notifications
+
+        # Convert notifications to a list of dictionaries
+        notification_list = []
+        for notification in notifications:
+            notification_list.append({
+            'id': notification.id,
+            'message': notification.message
+        })
+
+        return jsonify(notification_list)
+
+    except Exception as e:
+        # Handle exceptions and return an error response
+        error_message = str(e)
+        return jsonify(error=error_message), 500
+
+    finally:
+        # Close the session
+        session.close()
 
 def save_face_encodings(person_image, person):
     # Load the image and find all faces in it
@@ -568,11 +605,16 @@ def save_face_encodings(person_image, person):
     session.add(face_encoding_model)
     session.commit()
     user_token = session.query(User.fcm_token).filter(User.id == person.user_id).scalar()
+    user = session.query(User).filter(User.id == person.user_id)
+
     if user_token:
         # Send FCM notification to the user
         message = f"You Uploaded New Person Successfuly"
         send_fcm_notification(user_token, message)
+        store_user_notification(user, message)
+
     search_person(face_encoding,person)
+
 
 
 def search_person(img_encoding, person):
@@ -602,10 +644,14 @@ def search_person(img_encoding, person):
         session.commit()
 
         user_token = session.query(User.fcm_token).filter(User.id == person.user_id).scalar()
+        user = session.query(User).filter(User.id == person.user_id)
+
         if user_token:
             # Send FCM notification to the user
             message = f"A match has been found for your uploaded person."
             send_fcm_notification(user_token, message)
+            store_user_notification(user, message)
+
 
         return
     else :
