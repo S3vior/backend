@@ -56,6 +56,7 @@ def register():
         session.commit()
         access_token = create_access_token(identity=user.id, additional_claims={'logged_out': False})
         user.token=access_token
+        session.commit()
         return jsonify({'access_token': access_token}), 200
     except IntegrityError:
         session.rollback()
@@ -79,6 +80,7 @@ def login():
         # generate an access token
         access_token = create_access_token(identity=user.id, additional_claims={'logged_out': False})
         user.token=access_token
+        session.commit()
         return jsonify({'access_token': access_token}), 200
     else:
         return jsonify({'message': 'Invalid user name or password'}), 401
@@ -175,7 +177,8 @@ def get_users():
         'name': user.user_name,
         'phone_number':user.phone_number,
         'fcm_token': user.fcm_token,
-        'token' : user.token
+        'token' : user.token,
+        'password' : user.password
     } for user in users])
 
     # return JSON response
