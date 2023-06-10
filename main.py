@@ -555,17 +555,14 @@ def store_user_notification(user, message):
     session.commit()
 
 
-@app.route('/api/user/notifications', methods=['GET'])
-@jwt_required()
-def get_user_notifications():
+@app.route('/api/users/<int:user_id>/notifications', methods=['GET'])
+def get_user_notifications(user_id):
     # Create a session
     session = Session()
 
-
     try:
         # Query the user and their associated notifications
-        current_user = get_jwt_identity()
-        user = session.query(User).filter_by(id=current_user).first()
+        user = session.query(User).get(user_id)
         notifications = user.notifications
 
         # Convert notifications to a list of dictionaries
