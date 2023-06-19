@@ -1,6 +1,3 @@
-"""
-    API REST con Python 3 y SQLite 3
-"""
 from flask import Flask, jsonify, request, render_template
 
 import face_recognition
@@ -31,8 +28,12 @@ from auth import auth_app
 from scraping import scrap_app
 # from background_job import job_app
 from geopy.geocoders import Nominatim
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import messaging
 
 app = Flask(__name__)
+
 
 scheduler = BackgroundScheduler()
 app.register_blueprint(auth_app)
@@ -47,6 +48,10 @@ app.config['JWT_HEADER_NAME'] = 'token'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 engine = create_engine('sqlite:///savior.db', echo=True)
 Session = sessionmaker(bind=engine)
+
+
+cred = credentials.Certificate('sav3or-firebase.json')
+firebase_admin.initialize_app(cred)
 
 # create a session
 session = Session()
@@ -103,6 +108,7 @@ def get_matches():
         found_person = session.query(Person).filter_by(id=match.found_person_id).first()
         result.append({
             'id':match.id,
+            "perctage":match.match_percentage,
             'missed_person': {
                 'id': missed_person.id,
                 'name': missed_person.name,
@@ -357,7 +363,6 @@ def get_address(latitude, longitude):
         return None
 
 
-
 @app.route('/api/persons', methods=['POST'])
 @jwt_required()
 def create_person():
@@ -380,6 +385,7 @@ def create_person():
         image = request.files.get('image')
         if not image:
             return jsonify({'message': 'Please provide an image.'}), 400
+
 
         # Upload the enhanced image to Cloudinary
         uploaded_image = cloudinary.uploader.upload(image)
@@ -550,7 +556,7 @@ def contact_us():
     return jsonify({'message': 'Your message has been received. We will get back to you shortly.'}), 200
 
 def store_user_notification(user_id, message):
-    notification = Notification(message=message, user_id=user_id)
+    notification = Notification(user_id=user_id,message=message)
     session.add(notification)
     session.commit()
 
@@ -563,7 +569,9 @@ def get_user_notifications(user_id):
     try:
         # Query the user and their associated notifications
         # user = session.query(User).get(user_id)
-        user_notifications = session.query(Notification).filter(Notification.user_id == user_id).all()
+        user_notifications = session.query(Notification).all()
+        # user_notifications = session.query(Notification).filter(Notification.user_id == user_id).all()
+
 
         # Convert notifications to a list of dictionaries
         notification_list = []
@@ -584,8 +592,40 @@ def get_user_notifications(user_id):
         # Close the session
         session.close()
 
+import cv2
+import numpy as np
+
+def enhance_image(image_path):
+    # Load the image
+    image = cv2.imread(image_path)
+
+    # Apply image enhancement algorithms
+    enhanced_image = image.copy()
+    enhanced_image = denoise_image(enhanced_image)
+    enhanced_image = increase_contrast(enhanced_image)
+
+    # Convert the image to RGB format
+    enhanced_image = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2RGB)
+
+    return enhanced_image
+
+def denoise_image(image):
+    # Apply denoising algorithm (e.g., Non-local Means Denoising)
+    denoised_image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
+    return denoised_image
+
+def increase_contrast(image):
+    # Apply contrast enhancement algorithm (e.g., Adaptive Histogram Equalization)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    lab_planes = cv2.split(lab)
+    lab_planes[0] = clahe.apply(lab_planes[0])
+    lab = cv2.merge(lab_planes)
+    contrast_enhanced_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    return contrast_enhanced_image
+
 def save_face_encodings(person_image, person):
-    # Load the image and find all faces in it
+ # Load the image and find all faces in it
     response = urllib.request.urlopen(person_image)
     image = face_recognition.load_image_file(response)
     face_encodings = face_recognition.face_encodings(image)
@@ -601,17 +641,23 @@ def save_face_encodings(person_image, person):
     face_encoding_model.set_encoding(face_encoding)
     session.add(face_encoding_model)
     session.commit()
+
+    # Get the user associated with the person
+    user = person.user
+
+    # Create a notification object
+    notification = Notification(title = "New Person", message="You uploaded a new person successfully", user=user)
+    session.add(notification)
+    session.commit()
+
     user_token = session.query(User.fcm_token).filter(User.id == person.user_id).scalar()
-    user = session.query(User).filter(User.id == person.user_id)
 
     if user_token:
         # Send FCM notification to the user
         message = f"You Uploaded New Person Successfuly"
         send_fcm_notification(user_token, message)
-        store_user_notification( message , user.id)
 
     search_person(face_encoding,person)
-
 
 
 def search_person(img_encoding, person):
@@ -646,18 +692,11 @@ def search_person(img_encoding, person):
         if user_token:
             # Send FCM notification to the user
             message = f"A match has been found for your uploaded person."
-            send_fcm_notification(user_token, message)
             store_user_notification( message , user.id)
+            send_fcm_notification(user_token, message)
         return
     else :
         return
-
-
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import messaging
-cred = credentials.Certificate('sav3or-firebase.json')
-firebase_admin.initialize_app(cred)
 
 def send_fcm_notification(token, message):
     # Construct the notification payload
