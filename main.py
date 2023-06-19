@@ -578,6 +578,7 @@ def get_user_notifications(user_id):
         for notification in user_notifications:
             notification_list.append({
             'id': notification.id,
+            'title':notification.title,
             'message': notification.message
         })
 
