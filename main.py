@@ -592,37 +592,37 @@ def get_user_notifications(user_id):
         # Close the session
         session.close()
 
-import cv2
-import numpy as np
+# import cv2
+# import numpy as np
 
-def enhance_image(image_path):
-    # Load the image
-    image = cv2.imread(image_path)
+# def enhance_image(image_path):
+#     # Load the image
+#     image = cv2.imread(image_path)
 
-    # Apply image enhancement algorithms
-    enhanced_image = image.copy()
-    enhanced_image = denoise_image(enhanced_image)
-    enhanced_image = increase_contrast(enhanced_image)
+#     # Apply image enhancement algorithms
+#     enhanced_image = image.copy()
+#     enhanced_image = denoise_image(enhanced_image)
+#     enhanced_image = increase_contrast(enhanced_image)
 
-    # Convert the image to RGB format
-    enhanced_image = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2RGB)
+#     # Convert the image to RGB format
+#     enhanced_image = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2RGB)
 
-    return enhanced_image
+#     return enhanced_image
 
-def denoise_image(image):
-    # Apply denoising algorithm (e.g., Non-local Means Denoising)
-    denoised_image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
-    return denoised_image
+# def denoise_image(image):
+#     # Apply denoising algorithm (e.g., Non-local Means Denoising)
+#     denoised_image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
+#     return denoised_image
 
-def increase_contrast(image):
-    # Apply contrast enhancement algorithm (e.g., Adaptive Histogram Equalization)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    lab_planes = cv2.split(lab)
-    lab_planes[0] = clahe.apply(lab_planes[0])
-    lab = cv2.merge(lab_planes)
-    contrast_enhanced_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-    return contrast_enhanced_image
+# def increase_contrast(image):
+#     # Apply contrast enhancement algorithm (e.g., Adaptive Histogram Equalization)
+#     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+#     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+#     lab_planes = cv2.split(lab)
+#     lab_planes[0] = clahe.apply(lab_planes[0])
+#     lab = cv2.merge(lab_planes)
+#     contrast_enhanced_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+#     return contrast_enhanced_image
 
 def save_face_encodings(person_image, person):
  # Load the image and find all faces in it
