@@ -31,7 +31,6 @@ from geopy.geocoders import Nominatim
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import messaging
-
 app = Flask(__name__)
 
 
@@ -320,7 +319,7 @@ def get_match(match_id):
                 'longitude': missed_person.location.longitude,
             },
             'user': missed_person.user.user_name,
-            "phone": missed_person.phone_number,
+            "phone": missed_person.user.phone_number,
 
             'created_at': missed_person.created_at.isoformat()
         },
@@ -338,7 +337,7 @@ def get_match(match_id):
                 'longitude': found_person.location.longitude,
             },
             'user': found_person.user.user_name,
-            "phone": found_person.phone_number,
+            "phone": found_person.user.phone_number,
 
             'created_at': found_person.created_at.isoformat()
         }
