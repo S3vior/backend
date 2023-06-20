@@ -41,32 +41,32 @@
 
 #     return response
 
-# # def background_task(new_person):
-# #     # Load all the saved person images from the database
-# #     saved_persons = session.query(Person).filter_by(id != new_person.id).all()
-# #     saved_person_encodings = [face_recognition.load_image_file(p.image) for p in saved_persons]
-# #     saved_person_encodings = [face_recognition.face_encodings(img)[0] for img in saved_person_encodings]
+# def background_task(new_person):
+#     # Load all the saved person images from the database
+#     saved_persons = session.query(Person).filter_by(id != new_person.id).all()
+#     saved_person_encodings = [face_recognition.load_image_file(p.image) for p in saved_persons]
+#     saved_person_encodings = [face_recognition.face_encodings(img)[0] for img in saved_person_encodings]
 
-# #     # Encode the image of the new person
-# #     new_person_encoding = face_recognition.load_image_file(new_person.image)
-# #     new_person_encoding = face_recognition.face_encodings(new_person_encoding)[0]
+#     # Encode the image of the new person
+#     new_person_encoding = face_recognition.load_image_file(new_person.image)
+#     new_person_encoding = face_recognition.face_encodings(new_person_encoding)[0]
 
-# #     # Compare the new person encoding with saved person encodings
-# #     matches = face_recognition.compare_faces(saved_person_encodings, new_person_encoding)
+#     # Compare the new person encoding with saved person encodings
+#     matches = face_recognition.compare_faces(saved_person_encodings, new_person_encoding)
 
-# #     # If a match is found, notify the user
-# #     if any(matches):
-# #         matched_person = saved_persons[matches.index(True)]
-# #         message = f"{matched_person.name} has been added again."
-# #         # send_notification(matched_person.user_id, message)
-# #         return jsonify(message)
+#     # If a match is found, notify the user
+#     if any(matches):
+#         matched_person = saved_persons[matches.index(True)]
+#         message = f"{matched_person.name} has been added again."
+#         # send_notification(matched_person.user_id, message)
+#         return jsonify(message)
 
-# #     # If no match is found, add the new person to the Unique_Person table
-# #     else:
-# #         new_unique_person = UniquePerson(name=new_person.name, age=new_person.age, gender=new_person.gender,
-# #                                          description=new_person.description, image=new_person.image,
-# #                                          type=new_person.type, user_id=new_person.user_id)
-# #         session = Session()
-# #         session.add(new_unique_person)
-# #         session.commit()
-# #         session.close()
+#     # If no match is found, add the new person to the Unique_Person table
+#     else:
+#         new_unique_person = UniquePerson(name=new_person.name, age=new_person.age, gender=new_person.gender,
+#                                          description=new_person.description, image=new_person.image,
+#                                          type=new_person.type, user_id=new_person.user_id)
+#         session = Session()
+#         session.add(new_unique_person)
+#         session.commit()
+#         session.close()

@@ -123,6 +123,7 @@ def get_matches():
                'longitude': missed_person.location.longitude,
                },
             "user": missed_person.user.user_name,
+            "phone": missed_person.user.phone_unmber,
              'created_at': missed_person.created_at.isoformat()},
 
             'found_person': {
@@ -139,6 +140,7 @@ def get_matches():
                'longitude': found_person.location.longitude,
                },
         "user": found_person.user.user_name,
+        "phone": found_person.user.phone_unmber,
         'created_at': found_person.created_at.isoformat()},
 
         })
@@ -224,6 +226,7 @@ def get_persons():
             'longitude': person.location.longitude,
         },
         "user": person.user.user_name,
+        "phone": person.phone_number,
         'created_at': person.created_at.isoformat()
     }
     for person in persons])
@@ -251,6 +254,7 @@ def get_missing_persons():
             'longitude': person.location.longitude,
          },
         "user": person.user.user_name,
+        "phone": person.phone_number,
         'created_at': person.created_at.isoformat()
     } for person in persons])
 
@@ -277,6 +281,8 @@ def get_founded_persons():
             'longitude': person.location.longitude,
         },
         "user": person.user.user_name,
+        "phone": person.phone_number,
+
         'created_at': person.created_at.isoformat()
         } for person in persons])
 
@@ -314,6 +320,8 @@ def get_match(match_id):
                 'longitude': missed_person.location.longitude,
             },
             'user': missed_person.user.user_name,
+            "phone": missed_person.phone_number,
+
             'created_at': missed_person.created_at.isoformat()
         },
         'found_person': {
@@ -330,6 +338,8 @@ def get_match(match_id):
                 'longitude': found_person.location.longitude,
             },
             'user': found_person.user.user_name,
+            "phone": found_person.phone_number,
+
             'created_at': found_person.created_at.isoformat()
         }
     }
@@ -479,6 +489,8 @@ def get_person(person_id):
             'longitude': person.location.longitude,
         },
         "user": person.user.user_name,
+        "phone": person.phone_number,
+
         'created_at': person.created_at
         # Add any other fields you want to include
     })
@@ -528,6 +540,7 @@ def search_persons():
                 'latitude': person.location.latitude,
                 'longitude': person.location.longitude,
             },
+            "phone": person.phone_number,
             'created_at': person.created_at.isoformat()
         }
         for person in persons
