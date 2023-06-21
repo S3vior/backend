@@ -488,7 +488,7 @@ def get_person(person_id):
             'longitude': person.location.longitude,
         },
         "user": person.user.user_name,
-        "phone": person.phone_number,
+        "phone": person.user.phone_number,
 
         'created_at': person.created_at
         # Add any other fields you want to include
