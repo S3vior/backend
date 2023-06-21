@@ -280,7 +280,7 @@ def get_founded_persons():
             'longitude': person.location.longitude,
         },
         "user": person.user.user_name,
-        "phone": person.phone_number,
+        "phone": person.user.phone_number,
 
         'created_at': person.created_at.isoformat()
         } for person in persons])
