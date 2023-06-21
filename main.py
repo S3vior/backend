@@ -363,6 +363,24 @@ def delete_person(person_id):
         # return error response if person not found
         return jsonify({'error': f'Person with id {person_id} not found'}), 404
 
+@app.route('/matches/<int:match_id>', methods=['DELETE'])
+def delete_match(match_id):
+    # get a session and the person by id
+    session = Session()
+    match = session.query(Match).filter_by(id=match_id).first()
+
+    if match:
+        # delete the person
+        session.delete(match)
+        session.commit()
+
+        # return success response
+        return jsonify({'message': f'Person with id {match_id} deleted successfully'}), 200
+    else:
+        # return error response if person not found
+        return jsonify({'error': f'Person with id {match_id} not found'}), 404
+
+
 def get_address(latitude, longitude):
     geolocator = Nominatim(user_agent="savior")
     location = geolocator.reverse((latitude, longitude), exactly_one=True)
